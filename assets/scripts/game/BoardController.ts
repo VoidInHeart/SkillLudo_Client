@@ -131,8 +131,8 @@ export class BoardController extends Component {
       marker.on(Node.EventType.TOUCH_END, () => this.showCalibrationConfirmation());
       this.calibrationMarker = marker;
     }
-    const stored = target.position ? new Vec3(target.position.x, target.position.y, 0) : BoardLayout.namedPosition(target.key);
-    this.calibrationMarker.setPosition(stored ?? Vec3.ZERO);
+    const stored = target.position ? new Vec3(target.position.x, target.position.y, 0) : BoardLayout.calibrationPosition(target.key);
+    this.calibrationMarker.setPosition(stored);
     this.calibrationMarker.active = true;
     this.calibrationMarker.setSiblingIndex(root.children.length - 1);
     if (this.calibrationConfirm?.isValid) this.calibrationConfirm.active = false;

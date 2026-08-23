@@ -1,7 +1,7 @@
 import { _decorator, Component, js, sys } from 'cc';
 import { BoardController } from './BoardController';
 import { NetworkManager } from '../network/NetworkManager';
-import type { BoardCalibrationData, BoardCalibrationOpen, ChatEntry, ErrorPayload, GameSnapshot, MoveResult, ServerMessage } from '../protocol/GameProtocol';
+import type { ActiveGameSummary, BoardCalibrationData, BoardCalibrationOpen, ChatEntry, ErrorPayload, GameSnapshot, MoveResult, ServerMessage } from '../protocol/GameProtocol';
 import { GameUI, type AccountActionData } from '../ui/GameUI';
 
 const { ccclass, property } = _decorator;
@@ -29,6 +29,7 @@ export class GameController extends Component {
   private pendingAccountAuthentication = false;
   private pendingRememberLogin = false;
   private autoLoginRequested = false;
+  private exitedGameRoomId = '';
 
   public onLoad(): void {
     this.playerId = sys.localStorage.getItem(PLAYER_KEY) ?? '';
@@ -43,6 +44,7 @@ export class GameController extends Component {
     this.gameUI?.node.on('chat-send', this.handleChatSend, this);
     this.gameUI?.node.on('debug-roll', this.handleDebugRoll, this);
     this.boardController?.node.on('calibration-save', this.handleCalibrationSave, this);
+    this.gameUI?.node.on('rejoin-game', this.handleRejoinGame, this);
     this.bindNetworkEvents();
   }
 
@@ -61,6 +63,7 @@ export class GameController extends Component {
     this.gameUI?.node.off('chat-send', this.handleChatSend, this);
     this.gameUI?.node.off('debug-roll', this.handleDebugRoll, this);
     this.boardController?.node.off('calibration-save', this.handleCalibrationSave, this);
+    this.gameUI?.node.off('rejoin-game', this.handleRejoinGame, this);
     this.network.disconnect();
   }
 
@@ -92,6 +95,7 @@ export class GameController extends Component {
   }
   public onClickRollDice(debugDice?: number): void {
     if (!this.roomId) return;
+    if (this.snapshot?.players.find((player) => player.id === this.playerId)?.aiControlled) return;
     if (debugDice !== undefined && (!Number.isInteger(debugDice) || debugDice < 1 || debugDice > 6)) return;
     this.gameUI?.setDiceRequestPending();
     this.send('ROLL_DICE', { roomId: this.roomId, ...(debugDice === undefined ? {} : { debugDice }) });
@@ -100,12 +104,13 @@ export class GameController extends Component {
   public onClickPiece(pieceOrEvent: unknown, customPieceId = ''): void {
     const pieceId = typeof pieceOrEvent === 'string' ? pieceOrEvent : customPieceId;
     const snapshot = this.snapshot;
-    if (!snapshot || snapshot.currentPlayerId !== this.playerId || snapshot.phase !== 'WAIT_SELECT_PIECE' || snapshot.movablePieceIds.indexOf(pieceId) < 0 || snapshot.dice === null) return;
+    const localPlayer = snapshot?.players.find((player) => player.id === this.playerId);
+    if (!snapshot || localPlayer?.aiControlled || snapshot.currentPlayerId !== this.playerId || snapshot.phase !== 'WAIT_SELECT_PIECE' || snapshot.movablePieceIds.indexOf(pieceId) < 0 || snapshot.dice === null) return;
     const preview = this.boardController?.showMovePreview(pieceId, snapshot.dice);
     if (!preview) return;
     const confirm = () => {
       const latest = this.snapshot;
-      if (!latest || latest.currentPlayerId !== this.playerId || latest.phase !== 'WAIT_SELECT_PIECE' || latest.movablePieceIds.indexOf(pieceId) < 0) {
+      if (!latest || latest.players.find((player) => player.id === this.playerId)?.aiControlled || latest.currentPlayerId !== this.playerId || latest.phase !== 'WAIT_SELECT_PIECE' || latest.movablePieceIds.indexOf(pieceId) < 0) {
         this.boardController?.clearMovePreview();
         return;
       }
@@ -130,6 +135,12 @@ export class GameController extends Component {
       case 'ROLL_DICE': this.onClickRollDice(); break;
       case 'DEBUG_DICE': this.gameUI?.showDebugDiceDialog(); break;
       case 'CALIBRATE': this.send('CALIBRATION_OPEN', {}); break;
+      case 'AI_TAKEOVER': {
+        const player = this.snapshot?.players.find((candidate) => candidate.id === this.playerId);
+        if (player && this.roomId) this.send('SET_AI_TAKEOVER', { roomId: this.roomId, enabled: !player.aiControlled });
+        break;
+      }
+      case 'EXIT_GAME': if (this.roomId) this.send('EXIT_GAME', { roomId: this.roomId }); break;
       default: break;
     }
   }
@@ -139,10 +150,10 @@ export class GameController extends Component {
     this.network.on('CLOSE', () => this.gameUI?.showStatus('连接已断开，正在重连…'));
     this.network.on('NETWORK_ERROR', (message) => this.showError(message));
     this.network.on('AUTH_OK', (message) => this.handleAuth(message));
-    this.network.on('ROOM_CREATED', (message) => this.applySnapshot(message.data as GameSnapshot));
-    this.network.on('GAME_START', (message) => this.applySnapshot(message.data as GameSnapshot));
-    this.network.on('GAME_STATE', (message) => this.applySnapshot(message.data as GameSnapshot));
-    this.network.on('ROOM_STATE', (message) => this.applySnapshot(message.data as GameSnapshot));
+    this.network.on('ROOM_CREATED', (message) => { this.exitedGameRoomId = ''; this.applySnapshot(message.data as GameSnapshot); });
+    this.network.on('GAME_START', (message) => { this.exitedGameRoomId = ''; this.applySnapshot(message.data as GameSnapshot); });
+    this.network.on('GAME_STATE', (message) => this.applySnapshotUnlessExited(message.data as GameSnapshot));
+    this.network.on('ROOM_STATE', (message) => this.applySnapshotUnlessExited(message.data as GameSnapshot));
     this.network.on('DICE_RESULT', (message) => {
       const data = message.data as { playerId: string; dice: number; skipped?: boolean };
       this.gameUI?.playDiceRoll(data.dice);
@@ -153,7 +164,7 @@ export class GameController extends Component {
       this.boardController?.clearMovePreview();
       this.boardController?.playMove(message.data as MoveResult);
     });
-    this.network.on('GAME_OVER', (message) => this.applySnapshot(message.data as GameSnapshot));
+    this.network.on('GAME_OVER', (message) => this.applySnapshotUnlessExited(message.data as GameSnapshot));
     this.network.on('CHAT_HISTORY', (message) => {
       const data = message.data as { entries?: ChatEntry[] };
       this.gameUI?.setChatEntries(data.entries ?? []);
@@ -180,6 +191,21 @@ export class GameController extends Component {
         this.boardController?.stopCalibration();
         this.gameUI?.showStatus('棋盘节点校准已保存');
       }
+    });
+    this.network.on('GAME_EXITED', (message) => {
+      const data = message.data as { roomId?: string };
+      this.exitedGameRoomId = data.roomId ?? this.roomId;
+      this.snapshot = null;
+      sys.localStorage.removeItem(ROOM_KEY);
+      this.boardController?.stopCalibration();
+      this.boardController?.setBoardVisible(false);
+      this.gameUI?.showCalibrationStatus(null);
+      this.gameUI?.showHome();
+      this.gameUI?.showStatus('已退出对局，AI正在托管');
+    });
+    this.network.on('ACTIVE_GAMES', (message) => {
+      const data = message.data as { games?: ActiveGameSummary[] };
+      this.gameUI?.setActiveGames(data.games ?? []);
     });
     this.network.on('ERROR', (message) => this.showError(message));
   }
@@ -209,7 +235,7 @@ export class GameController extends Component {
   private handleDebugRoll(value: unknown): void {
     if (typeof value !== 'number') return;
     const snapshot = this.snapshot;
-    if (!snapshot || snapshot.currentPlayerId !== this.playerId || snapshot.phase !== 'WAIT_ROLL') {
+    if (!snapshot || snapshot.players.find((player) => player.id === this.playerId)?.aiControlled || snapshot.currentPlayerId !== this.playerId || snapshot.phase !== 'WAIT_ROLL') {
       this.gameUI?.showError('仅能在轮到你投骰子时指定点数');
       return;
     }
@@ -219,6 +245,12 @@ export class GameController extends Component {
     if (!data || typeof data !== 'object') return;
     this.send('CALIBRATION_SAVE', data as Record<string, unknown>);
   }
+  private handleRejoinGame(roomId: unknown): void {
+    if (typeof roomId !== 'string' || !/^\d{6}$/.test(roomId)) return;
+    this.exitedGameRoomId = '';
+    sys.localStorage.setItem(ROOM_KEY, roomId);
+    this.send('REJOIN_GAME', { roomId });
+  }
 
   private authenticate(): void {
     const guestId = sys.localStorage.getItem(GUEST_KEY) ?? this.createGuestId();
@@ -227,11 +259,12 @@ export class GameController extends Component {
   }
 
   private handleAuth(message: ServerMessage): void {
-    const data = message.data as { playerId: string; sessionId: string; nickname?: string; isAdmin?: boolean };
+    const data = message.data as { playerId: string; sessionId: string; nickname?: string; isAdmin?: boolean; activeGames?: ActiveGameSummary[] };
     this.playerId = data.playerId;
     this.playerNickname = data.nickname ?? this.playerNickname;
     this.sessionId = data.sessionId;
     this.gameUI?.setAdmin(data.isAdmin === true);
+    this.gameUI?.setActiveGames(data.activeGames ?? []);
     sys.localStorage.setItem(PLAYER_KEY, data.playerId);
     if (this.pendingAccountAuthentication) {
       this.pendingAccountAuthentication = false;
@@ -264,6 +297,14 @@ export class GameController extends Component {
     this.boardController?.setBoardVisible(inGame);
     this.boardController?.applySnapshot(snapshot);
     this.gameUI?.render(snapshot, this.playerId);
+  }
+  private applySnapshotUnlessExited(snapshot: GameSnapshot): void {
+    if (snapshot.roomId === this.exitedGameRoomId) {
+      const local = snapshot.players.find((player) => player.id === this.playerId);
+      this.gameUI?.setActiveGames(snapshot.roomStatus === 'PLAYING' && local ? [{ roomId: snapshot.roomId, color: local.color, turnNumber: snapshot.turnNumber, playerCount: snapshot.players.length, status: snapshot.roomStatus }] : []);
+      return;
+    }
+    this.applySnapshot(snapshot);
   }
 
   private send(type: Parameters<NetworkManager['send']>[0], data: Record<string, unknown>): void {

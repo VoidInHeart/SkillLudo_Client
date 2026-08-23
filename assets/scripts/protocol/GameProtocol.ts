@@ -12,7 +12,8 @@ export type ClientMessageType =
   | 'QUICK_MATCH' | 'CHAT_SEND'
   | 'READY' | 'CANCEL_READY' | 'START_GAME'
   | 'ROLL_DICE' | 'SELECT_PIECE' | 'PING' | 'RECONNECT'
-  | 'CALIBRATION_OPEN' | 'CALIBRATION_SAVE';
+  | 'CALIBRATION_OPEN' | 'CALIBRATION_SAVE'
+  | 'SET_AI_TAKEOVER' | 'EXIT_GAME' | 'REJOIN_GAME';
 
 export type ServerMessageType =
   | 'AUTH_OK' | 'ROOM_CREATED' | 'ROOM_STATE'
@@ -21,7 +22,8 @@ export type ServerMessageType =
   | 'GAME_START' | 'TURN_START' | 'DICE_RESULT' | 'MOVABLE_PIECES'
   | 'MOVE_RESULT' | 'GAME_STATE' | 'PLAYER_DISCONNECTED'
   | 'PLAYER_RECONNECTED' | 'GAME_OVER' | 'ERROR' | 'PONG'
-  | 'BOARD_CALIBRATION_DATA' | 'BOARD_CALIBRATION_OPEN' | 'BOARD_CALIBRATION_SAVED';
+  | 'BOARD_CALIBRATION_DATA' | 'BOARD_CALIBRATION_OPEN' | 'BOARD_CALIBRATION_SAVED'
+  | 'AI_TAKEOVER_CHANGED' | 'GAME_EXITED' | 'ACTIVE_GAMES';
 
 export interface BoardPosition { x: number; y: number; }
 export interface BoardCalibrationData {
@@ -37,6 +39,14 @@ export interface BoardCalibrationOpen {
   total: number;
   position?: BoardPosition;
   single: boolean;
+}
+
+export interface ActiveGameSummary {
+  roomId: string;
+  color: PlayerColor;
+  turnNumber: number;
+  playerCount: number;
+  status: RoomStatus;
 }
 
 export interface ClientMessage<T = Record<string, unknown>> {
@@ -58,6 +68,7 @@ export interface PlayerPublicState {
   avatarUrl?: string;
   color: PlayerColor;
   isBot?: boolean;
+  aiControlled?: boolean;
   ready: boolean;
   connected: boolean;
 }

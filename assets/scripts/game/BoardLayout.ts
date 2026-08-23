@@ -37,10 +37,28 @@ export class BoardLayout {
     return position ? new Vec3(position.x, position.y, 0) : null;
   }
 
+  public static calibrationPosition(key: string): Vec3 {
+    const normalized = key.toLowerCase();
+    const calibrated = this.namedPosition(normalized);
+    if (calibrated) return calibrated;
+    const airport = /^(red|yellow|blue|green)-airport-([1-4])$/.exec(normalized);
+    if (airport) return this.airportPosition(airport[1].toUpperCase() as PlayerColor, Number.parseInt(airport[2], 10) - 1);
+    const takeoff = /^(red|yellow|blue|green)-takeoff$/.exec(normalized);
+    if (takeoff) return this.takeoffPosition(takeoff[1].toUpperCase() as PlayerColor);
+    const landing = /^(red|yellow|blue|green)-landing-([1-6])$/.exec(normalized);
+    if (landing) return this.finalPathPosition(landing[1].toUpperCase() as PlayerColor, Number.parseInt(landing[2], 10) - 1);
+    if (/^\d{2}$/.test(normalized)) {
+      const point = MAIN_TRACK[Math.max(0, Math.min(51, Number.parseInt(normalized, 10) - 1))];
+      return new Vec3((point[1] - 7) * GRID_SIZE, (7 - point[0]) * GRID_SIZE, 0);
+    }
+    return Vec3.ZERO.clone();
+  }
+
   public static mainPathPosition(color: PlayerColor, progress: number): Vec3 {
     if (progress <= 0) return this.takeoffPosition(color);
     const index = (CLOCKWISE_NODE_OFFSET[color] + progress - 1) % 52;
-    const calibrated = this.namedPosition(String(index + 1).padStart(2, '0'));
+    const nodeNumber = index + 1;
+    const calibrated = this.namedPosition(nodeNumber < 10 ? `0${nodeNumber}` : String(nodeNumber));
     if (calibrated) return calibrated;
     const point = MAIN_TRACK[index];
     return new Vec3((point[1] - 7) * GRID_SIZE, (7 - point[0]) * GRID_SIZE, 0);
