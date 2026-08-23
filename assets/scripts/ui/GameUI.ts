@@ -1,0 +1,407 @@
+import { _decorator, Button, Canvas, Color, Component, EditBox, Graphics, js, Label, Layers, Node, UITransform, Vec3, view } from 'cc';
+import type { ChatEntry, GameSnapshot, PlayerColor, PlayerPublicState } from '../protocol/GameProtocol';
+
+const { ccclass, property } = _decorator;
+type Screen = 'HOME' | 'AUTH' | 'ROOM' | 'GAME';
+
+export interface MoveConfirmation { color: PlayerColor; dice: number; description: string; }
+export interface AccountActionData { username: string; password: string; nickname: string; rememberMe: boolean; }
+
+/** Runtime UI with three deliberately separate surfaces: home, room lobby and game HUD. */
+@ccclass('GameUI')
+export class GameUI extends Component {
+  @property(Label) public statusLabel: Label | null = null;
+  @property(Label) public roomLabel: Label | null = null;
+  @property(Label) public playersLabel: Label | null = null;
+  @property(Label) public diceLabel: Label | null = null;
+  @property(Label) public rankingsLabel: Label | null = null;
+  @property(EditBox) public nicknameInput: EditBox | null = null;
+  @property(Button) public rollButton: Button | null = null;
+  @property(Button) public readyButton: Button | null = null;
+  @property(Button) public startButton: Button | null = null;
+
+  private runtimeRoot: Node | null = null;
+  private homeRoot: Node | null = null;
+  private authRoot: Node | null = null;
+  private authCard: Node | null = null;
+  private authFormRoot: Node | null = null;
+  private authNoticeLabel: Label | null = null;
+  private readonly authTabs = new Map<'LOGIN' | 'REGISTER', Node>();
+  private authMode: 'LOGIN' | 'REGISTER' = 'LOGIN';
+  private rememberLogin = true;
+  private homeConnectionLabel: Label | null = null;
+  private roomRoot: Node | null = null;
+  private roomTitleLabel: Label | null = null;
+  private roomPlayersLabel: Label | null = null;
+  private roomNoticeLabel: Label | null = null;
+  private diceGraphics: Graphics | null = null;
+  private moveConfirmModal: Node | null = null;
+  private joinRoomModal: Node | null = null;
+  private joinRoomNoticeLabel: Label | null = null;
+  private chatModal: Node | null = null;
+  private chatLinesRoot: Node | null = null;
+  private chatLineNodes: Node[] = [];
+  private readonly actionButtons = new Map<string, Button>();
+  private chatEntries: ChatEntry[] = [];
+  private currentScreen: Screen = 'HOME';
+  private roomOwnerId = '';
+  private localPlayerId = '';
+
+  public onLoad(): void {
+    this.node.layer = Layers.Enum.UI_2D;
+    this.installWebInputStyle();
+    if (!this.statusLabel || !this.roomLabel || !this.rollButton || !this.readyButton || !this.startButton) this.buildRuntimeUi();
+    this.showAuthPage();
+  }
+
+  public showHome(): void { this.setScreen('HOME'); }
+  /** Kept for existing scene callers; waiting rooms are rendered by render(). */
+  public setGameMode(inGame: boolean): void { this.setScreen(inGame ? 'GAME' : 'HOME'); }
+
+  public render(snapshot: GameSnapshot, localPlayerId: string): void {
+    this.localPlayerId = localPlayerId;
+    if (snapshot.roomStatus === 'WAITING') {
+      this.renderRoom(snapshot, localPlayerId);
+      return;
+    }
+    this.setScreen('GAME');
+    const myTurn = snapshot.currentPlayerId === localPlayerId;
+    this.setText(this.roomLabel, `房间：${snapshot.roomId}（第 ${snapshot.turnNumber} 回合）`);
+    this.setText(this.playersLabel, snapshot.players.map((player) => this.playerLine(player)).join('\n'));
+    this.setText(this.diceLabel, snapshot.dice ? `骰子：${snapshot.dice}` : '骰子：等待投掷');
+    this.drawDice(snapshot.dice ?? 1);
+    this.setText(this.rankingsLabel, snapshot.rankings.length ? `排名：${snapshot.rankings.map((id, index) => `${index + 1}.${snapshot.players.find((p) => p.id === id)?.nickname ?? id}`).join('  ')}` : '');
+    this.setText(this.statusLabel, this.statusFor(snapshot, myTurn));
+    if (this.rollButton) this.rollButton.interactable = snapshot.phase === 'WAIT_ROLL' && myTurn;
+    if (this.readyButton) this.readyButton.interactable = false;
+    if (this.startButton) this.startButton.interactable = false;
+  }
+
+  public showError(message: string): void {
+    if (this.currentScreen === 'ROOM') this.setText(this.roomNoticeLabel, `提示：${message}`);
+    else if (this.currentScreen === 'AUTH') this.setText(this.authNoticeLabel, `提示：${message}`);
+    else if (this.joinRoomModal?.isValid) this.setText(this.joinRoomNoticeLabel, `提示：${message}`);
+    else if (this.currentScreen === 'HOME') this.setText(this.homeConnectionLabel, `提示：${message}`);
+    else this.setText(this.statusLabel, `提示：${message}`);
+  }
+  public showStatus(message: string): void {
+    if (this.currentScreen === 'ROOM') this.setText(this.roomNoticeLabel, message);
+    else if (this.currentScreen === 'AUTH') this.setText(this.authNoticeLabel, message);
+    else if (this.currentScreen === 'HOME') this.setText(this.homeConnectionLabel, message);
+    else this.setText(this.statusLabel, message);
+  }
+  public getNickname(): string { return this.nicknameInput?.string.trim() ?? ''; }
+
+  public setChatEntries(entries: ChatEntry[]): void { this.chatEntries = entries.slice(-80); this.renderChatEntries(); }
+  public appendChatEntry(entry: ChatEntry): void {
+    const last = this.chatEntries[this.chatEntries.length - 1];
+    if (last && last.timestamp === entry.timestamp && last.kind === entry.kind && last.content === entry.content && last.senderId === entry.senderId) return;
+    this.chatEntries.push(entry);
+    if (this.chatEntries.length > 80) this.chatEntries.shift();
+    this.renderChatEntries();
+  }
+
+  /** A full page, not a modal: mirrors the dedicated auth-route treatment in the reference project. */
+  public showAuthPage(mode: 'LOGIN' | 'REGISTER' = 'LOGIN'): void {
+    this.authMode = mode;
+    this.setScreen('AUTH');
+    this.setText(this.authNoticeLabel, '账号数据保存在本机游戏服务器中');
+    this.updateAuthTabs();
+    this.renderAuthForm(mode);
+  }
+
+  /** The home page stays uncluttered; entering a friend's code happens in this focused dialog. */
+  public showJoinRoomDialog(): void {
+    this.closeJoinRoomDialog();
+    const modal = this.createModalRoot('JoinRoomModal');
+    const card = this.createCard(modal, 'JoinRoomCard', 440, 265, new Color(255, 255, 255), new Color(58, 119, 203));
+    this.addLabel(card, 'JoinRoomTitle', '加入好友房间', new Vec3(0, 83, 0), 360, 34, 24, new Color(24, 70, 137));
+    this.joinRoomNoticeLabel = this.addLabel(card, 'JoinRoomNotice', '输入 6 位数字房间号', new Vec3(0, 45, 0), 360, 26, 16, new Color(95, 117, 151));
+    const input = this.createTextInput(card, 'JoinRoomId', new Vec3(0, -5, 0), 280, '例如：123456'); input.maxLength = 6;
+    this.createModalButton(card, '取消', new Vec3(-94, -83, 0), new Color(121, 139, 164), () => this.closeJoinRoomDialog(), 118, 42, 16);
+    this.createModalButton(card, '加入房间', new Vec3(94, -83, 0), new Color(38, 117, 214), () => {
+      const roomId = input.string.trim();
+      if (!/^\d{6}$/.test(roomId)) { this.setText(this.joinRoomNoticeLabel, '请输入 6 位数字房间号'); return; }
+      this.closeJoinRoomDialog();
+      this.node.emit('join-room', roomId);
+    }, 118, 42, 16);
+    this.joinRoomModal = modal;
+  }
+
+  public closeJoinRoomDialog(): void {
+    if (this.joinRoomModal?.isValid) this.joinRoomModal.destroy();
+    this.joinRoomModal = null;
+    this.joinRoomNoticeLabel = null;
+  }
+
+  public showChatDialog(snapshot: GameSnapshot, localPlayerId: string): void {
+    this.closeChatDialog();
+    const modal = this.createModalRoot('RoomChatModal');
+    const card = this.createCard(modal, 'ChatCard', 660, 560, new Color(255, 255, 255), new Color(58, 119, 203));
+    this.addLabel(card, 'ChatTitle', '房间交流', new Vec3(0, 235, 0), 400, 34, 25, new Color(24, 70, 137));
+    const targetLabel = this.addLabel(card, 'ChatTarget', '发送至：房间广播', new Vec3(0, 190, 0), 520, 28, 17, new Color(74, 94, 120));
+    let recipientId = '';
+    this.createModalButton(card, '广播', new Vec3(-245, 150, 0), new Color(40, 117, 214), () => { recipientId = ''; targetLabel.string = '发送至：房间广播'; }, 92, 36, 14);
+    snapshot.players.filter((player) => player.id !== localPlayerId).forEach((player, index) => {
+      const x = -130 + (index % 3) * 130;
+      const y = 150 - Math.floor(index / 3) * 42;
+      this.createModalButton(card, `私信 ${player.nickname}`, new Vec3(x, y, 0), new Color(120, 91, 177), () => { recipientId = player.id; targetLabel.string = `发送至：私信 ${player.nickname}`; }, 118, 34, 13);
+    });
+    const lines = new Node('ChatLines'); lines.setParent(card); lines.layer = Layers.Enum.UI_2D; lines.addComponent(UITransform).setContentSize(570, 270); lines.setPosition(0, 5, 0); this.chatLinesRoot = lines;
+    const input = this.createTextInput(card, 'ChatInput', new Vec3(-65, -205, 0), 410, '输入 1–200 个字符');
+    this.createModalButton(card, '发送', new Vec3(235, -205, 0), new Color(35, 145, 92), () => { const content = input.string.trim(); if (!content) return; input.string = ''; this.node.emit('chat-send', { content, recipientId: recipientId || undefined }); }, 104, 44, 16);
+    this.createModalButton(card, '关闭', new Vec3(0, -255, 0), new Color(126, 139, 158), () => this.closeChatDialog(), 110, 34, 14);
+    this.chatModal = modal;
+    this.renderChatEntries();
+  }
+
+  public closeChatDialog(): void {
+    if (this.chatModal?.isValid) this.chatModal.destroy();
+    this.chatModal = null; this.chatLinesRoot = null; this.chatLineNodes = [];
+  }
+
+  /** Second-step confirmation protects against accidental plane clicks. */
+  public showMoveConfirmation(preview: MoveConfirmation, onConfirm: () => void, onCancel: () => void): void {
+    this.closeMoveConfirmation();
+    const modal = this.createModalRoot('MoveConfirmModal');
+    const card = this.createCard(modal, 'ConfirmCard', 420, 250, new Color(255, 255, 255), new Color(47, 108, 196));
+    this.addLabel(card, 'ConfirmTitle', '确认移动飞机？', new Vec3(0, 75, 0), 360, 34, 25, new Color(28, 64, 120));
+    const colorName = ({ RED: '红色', YELLOW: '黄色', BLUE: '蓝色', GREEN: '绿色' } as Record<PlayerColor, string>)[preview.color];
+    this.addLabel(card, 'ConfirmDetail', `${colorName}飞机 · 骰子 ${preview.dice}\n${preview.description}\n已高亮显示目标位置`, new Vec3(0, 15, 0), 360, 100, 19, new Color(43, 57, 79));
+    this.createModalButton(card, '取消', new Vec3(-100, -75, 0), new Color(125, 139, 158), () => { this.closeMoveConfirmation(); onCancel(); });
+    this.createModalButton(card, '确认移动', new Vec3(100, -75, 0), new Color(36, 130, 80), () => { this.closeMoveConfirmation(); onConfirm(); });
+    this.moveConfirmModal = modal;
+  }
+  public closeMoveConfirmation(): void { if (this.moveConfirmModal?.isValid) this.moveConfirmModal.destroy(); this.moveConfirmModal = null; }
+
+  private renderRoom(snapshot: GameSnapshot, localPlayerId: string): void {
+    this.setScreen('ROOM');
+    this.roomOwnerId = snapshot.ownerId;
+    this.setText(this.roomTitleLabel, `房间 ${snapshot.roomId}`);
+    const isOwner = snapshot.ownerId === localPlayerId;
+    const canStart = isOwner && snapshot.players.length >= 2 && snapshot.players.every((player) => player.ready);
+    this.setText(this.roomPlayersLabel, snapshot.players.map((player, index) => `${index + 1}. ${this.colorIcon(player.color)} ${player.nickname}${player.id === snapshot.ownerId ? ' · 房主' : ''}　${player.ready ? '已准备' : '等待准备'}　${player.connected ? '在线' : '重连中'}`).join('\n'));
+    this.setText(this.roomNoticeLabel, isOwner ? (canStart ? '全部准备完成，可以开始对局' : '等待至少一位玩家加入并全部准备') : '等待房主开始对局');
+    if (this.readyButton) this.readyButton.interactable = !!snapshot.players.find((player) => player.id === localPlayerId);
+    if (this.startButton) this.startButton.interactable = canStart;
+  }
+
+  private setScreen(screen: Screen): void {
+    this.currentScreen = screen;
+    const home = screen === 'HOME'; const auth = screen === 'AUTH'; const room = screen === 'ROOM'; const game = screen === 'GAME';
+    if (this.homeRoot) this.homeRoot.active = home;
+    if (this.authRoot) this.authRoot.active = auth;
+    if (this.roomRoot) this.roomRoot.active = room;
+    ['CREATE_ROOM', 'JOIN_ROOM', 'QUICK_MATCH'].forEach((action) => this.setActionVisible(action, home));
+    ['READY', 'START_GAME', 'CHAT', 'LEAVE_ROOM'].forEach((action) => this.setActionVisible(action, room));
+    this.setActionVisible('ROLL_DICE', game);
+    if (this.statusLabel) this.statusLabel.node.active = game;
+    if (this.homeConnectionLabel) this.homeConnectionLabel.node.active = home;
+    if (this.roomLabel) this.roomLabel.node.active = game;
+    if (this.playersLabel) this.playersLabel.node.active = game;
+    if (this.diceLabel) this.diceLabel.node.active = game;
+    if (this.diceGraphics) this.diceGraphics.node.active = game;
+    if (this.rankingsLabel) this.rankingsLabel.node.active = game;
+    if (this.statusLabel) this.statusLabel.color = new Color(232, 243, 255);
+  }
+
+  private buildRuntimeUi(): void {
+    const size = view.getVisibleSize();
+    // The browser preview toolbar can make the available height substantially
+    // shorter than the project's design height. Keep the lobby usable in that
+    // compact viewport instead of letting the join controls fall below it.
+    const compact = size.height < 600;
+    this.createHomeVisual(size); this.createAuthVisual(size); this.createRoomVisual(size);
+    this.statusLabel = this.addLabel(this.getRuntimeRoot(), 'Status', '', new Vec3(0, -size.height / 2 + (compact ? 53 : 42), 0), 720, 34, 19, new Color(232, 243, 255));
+    this.roomLabel = this.addLabel(this.getRuntimeRoot(), 'GameRoom', '', new Vec3(0, size.height / 2 - 70, 0), 620, 28, 18, new Color(228, 241, 255));
+    this.playersLabel = this.addLabel(this.getRuntimeRoot(), 'GamePlayers', '', new Vec3(-size.width / 2 + 135, size.height / 2 - 135, 0), 250, 130, 16, new Color(31, 53, 85));
+    this.diceLabel = this.addLabel(this.getRuntimeRoot(), 'Dice', '', new Vec3(size.width / 2 - 120, size.height / 2 - 120, 0), 170, 30, 19, new Color(31, 53, 85));
+    this.createDice(new Vec3(size.width / 2 - 120, size.height / 2 - 185, 0));
+    this.rankingsLabel = this.addLabel(this.getRuntimeRoot(), 'Rankings', '', new Vec3(0, -size.height / 2 + 120, 0), 600, 30, 17, new Color(31, 53, 85));
+    this.createActionButton('快速匹配', 'QUICK_MATCH', new Vec3(0, compact ? -18 : -86, 0), true, new Color(35, 145, 92));
+    this.createActionButton('创建房间', 'CREATE_ROOM', new Vec3(-92, compact ? -78 : -146, 0), true, new Color(40, 117, 214), 150, 46, 16);
+    this.createActionButton('加入房间', 'JOIN_ROOM', new Vec3(92, compact ? -78 : -146, 0), true, new Color(56, 117, 198), 150, 46, 16);
+    this.readyButton = this.createActionButton('准备', 'READY', new Vec3(-105, compact ? -122 : -175, 0), false);
+    this.startButton = this.createActionButton('开始对局', 'START_GAME', new Vec3(105, compact ? -122 : -175, 0), false, new Color(35, 145, 92));
+    // Keep the two room-action rows on the exact same two-column grid.
+    this.createActionButton('文字交流', 'CHAT', new Vec3(-105, compact ? -177 : -238, 0), true, new Color(120, 91, 177));
+    this.createActionButton('离开房间', 'LEAVE_ROOM', new Vec3(105, compact ? -177 : -238, 0), true, new Color(135, 83, 86));
+    this.rollButton = this.createActionButton('投骰子', 'ROLL_DICE', new Vec3(size.width / 2 - 95, -size.height / 2 + 58, 0), false);
+    this.showStatus('连接游戏服务器中…');
+  }
+
+  private createHomeVisual(size: { width: number; height: number }): void {
+    const compact = size.height < 600;
+    const root = new Node('NationalLudoHome'); root.setParent(this.getRuntimeRoot()); root.layer = Layers.Enum.UI_2D; root.addComponent(UITransform).setContentSize(size.width, size.height);
+    const graphics = root.addComponent(Graphics);
+    graphics.fillColor = new Color(8, 31, 74, 255); graphics.rect(-size.width / 2, -size.height / 2, size.width, size.height); graphics.fill();
+    graphics.fillColor = new Color(20, 74, 145, 255); graphics.circle(-size.width * 0.34, size.height * 0.42, size.width * 0.46); graphics.fill();
+    graphics.fillColor = new Color(15, 56, 116, 255); graphics.circle(size.width * 0.37, -size.height * 0.35, size.width * 0.52); graphics.fill();
+    this.drawCloud(graphics, -size.width * 0.37, 140, 1.15); this.drawCloud(graphics, size.width * 0.34, -50, 0.82);
+    if (!compact) {
+      const colours = [new Color(232, 73, 73), new Color(241, 190, 55), new Color(65, 142, 234), new Color(78, 177, 94)];
+      [[-72, 0], [0, 72], [72, 0], [0, -72]].forEach((point, index) => { graphics.fillColor = colours[index]; graphics.circle(point[0], 125 + point[1], 34); graphics.fill(); });
+      graphics.fillColor = Color.WHITE; graphics.circle(0, 125, 31); graphics.fill(); graphics.fillColor = new Color(16, 70, 142); graphics.moveTo(0, 151); graphics.lineTo(-15, 121); graphics.lineTo(0, 95); graphics.lineTo(15, 121); graphics.close(); graphics.fill();
+    }
+    const cardBottom = compact ? -198 : -275; const cardHeight = compact ? 326 : 340;
+    graphics.fillColor = new Color(255, 255, 255, 246); graphics.roundRect(-290, cardBottom, 580, cardHeight, 26); graphics.fill(); graphics.strokeColor = new Color(142, 194, 244); graphics.lineWidth = 2; graphics.roundRect(-290, cardBottom, 580, cardHeight, 26); graphics.stroke();
+    this.addLabel(root, 'NationalLudoTitle', '国家版飞行棋', new Vec3(0, compact ? 180 : 242, 0), 720, 62, 46, Color.WHITE);
+    this.addLabel(root, 'NationalLudoSubtitle', '四人联机 · 一掷定乾坤', new Vec3(0, compact ? 146 : 195, 0), 520, 30, 20, new Color(205, 230, 255));
+    this.addLabel(root, 'LobbyHeading', '选择你的航程', new Vec3(0, compact ? 89 : 48, 0), 300, 34, 24, new Color(22, 75, 145));
+    this.homeConnectionLabel = this.addLabel(root, 'HomeConnection', '连接游戏服务器中…', new Vec3(0, compact ? 57 : 16, 0), 430, 26, 15, new Color(66, 131, 101));
+    this.addLabel(root, 'RoomHint', '快速匹配，或创建 / 加入好友房间', new Vec3(0, compact ? 30 : -15, 0), 430, 26, 15, new Color(106, 126, 155));
+    root.setSiblingIndex(0); this.homeRoot = root;
+  }
+
+  private createAuthVisual(size: { width: number; height: number }): void {
+    const compact = size.height < 600;
+    const root = new Node('NationalLudoAccountPage'); root.setParent(this.getRuntimeRoot()); root.layer = Layers.Enum.UI_2D; root.addComponent(UITransform).setContentSize(size.width, size.height);
+    const graphics = root.addComponent(Graphics);
+    graphics.fillColor = new Color(11, 30, 66, 255); graphics.rect(-size.width / 2, -size.height / 2, size.width, size.height); graphics.fill();
+    graphics.fillColor = new Color(36, 89, 165, 255); graphics.circle(-size.width * 0.32, size.height * 0.42, size.width * 0.47); graphics.fill();
+    graphics.fillColor = new Color(39, 65, 126, 255); graphics.circle(size.width * 0.42, -size.height * 0.28, size.width * 0.5); graphics.fill();
+    this.drawCloud(graphics, -size.width * 0.33, -35, 1.2); this.drawCloud(graphics, size.width * 0.27, 125, 0.8);
+    const card = this.createCard(root, 'AccountPageCard', 560, compact ? 416 : 500, new Color(250, 252, 255, 250), new Color(137, 187, 242));
+    this.addLabel(card, 'AuthBrand', '国家版飞行棋', new Vec3(0, compact ? 167 : 205, 0), 440, 38, 28, new Color(24, 73, 144));
+    this.addLabel(card, 'AuthSubtitle', '账号中心', new Vec3(0, compact ? 132 : 162, 0), 430, 28, 18, new Color(93, 117, 151));
+    this.authNoticeLabel = this.addLabel(card, 'AuthNotice', '', new Vec3(0, compact ? 101 : 128, 0), 470, 30, 15, new Color(98, 115, 140));
+    this.createAuthTab(card, 'LOGIN', '登录', new Vec3(-58, compact ? 65 : 86, 0));
+    this.createAuthTab(card, 'REGISTER', '注册', new Vec3(58, compact ? 65 : 86, 0));
+    const form = new Node('AuthForm'); form.setParent(card); form.layer = Layers.Enum.UI_2D; form.addComponent(UITransform).setContentSize(500, 260);
+    this.authRoot = root; this.authCard = card; this.authFormRoot = form;
+    this.updateAuthTabs();
+    root.setSiblingIndex(0);
+  }
+
+  private renderAuthForm(mode: 'LOGIN' | 'REGISTER'): void {
+    const card = this.authCard; const form = this.authFormRoot;
+    if (!card || !form) return;
+    // Node.destroy() is deferred to the end of the frame. Detach old controls
+    // first so switching between 登录 / 注册 never briefly renders both forms.
+    form.children.slice().forEach((child) => { child.removeFromParent(); child.destroy(); });
+    const compact = view.getVisibleSize().height < 600;
+    const fieldWidth = 370;
+    const submit = (type: 'LOGIN' | 'REGISTER', username: EditBox, password: EditBox, nickname?: EditBox): void => {
+      const data: AccountActionData = { username: username.string.trim(), password: password.string, nickname: nickname?.string.trim() ?? '', rememberMe: this.rememberLogin };
+      this.setText(this.authNoticeLabel, type === 'LOGIN' ? '正在验证账号…' : '正在创建账号…');
+      this.node.emit('account-action', type, data);
+    };
+    if (mode === 'LOGIN') {
+      const username = this.createTextInput(form, 'LoginUsername', new Vec3(0, compact ? 17 : 28, 0), fieldWidth, '账号');
+      const password = this.createTextInput(form, 'LoginPassword', new Vec3(0, compact ? -40 : -32, 0), fieldWidth, '密码', true);
+      this.createRememberToggle(form, new Vec3(0, compact ? -78 : -74, 0));
+      this.createModalButton(form, '登录账号', new Vec3(0, compact ? -132 : -124, 0), new Color(27, 103, 193), () => submit('LOGIN', username, password), 220, 48, 18);
+      return;
+    }
+    const username = this.createTextInput(form, 'RegisterUsername', new Vec3(0, compact ? 17 : 31, 0), fieldWidth, '账号：3–32 位字母、数字或下划线');
+    const password = this.createTextInput(form, 'RegisterPassword', new Vec3(0, compact ? -40 : -26, 0), fieldWidth, '密码：至少 8 位', true);
+    const nickname = this.createTextInput(form, 'RegisterNickname', new Vec3(0, compact ? -97 : -83, 0), fieldWidth, '昵称（可选，最多 20 字）');
+    this.createRememberToggle(form, new Vec3(0, compact ? -130 : -125, 0));
+    this.createModalButton(form, '创建账号', new Vec3(0, compact ? -168 : -170, 0), new Color(47, 139, 90), () => submit('REGISTER', username, password, nickname), 220, 48, 18);
+  }
+
+  private createRoomVisual(size: { width: number; height: number }): void {
+    const compact = size.height < 600;
+    const root = new Node('LudoRoomLobby'); root.setParent(this.getRuntimeRoot()); root.layer = Layers.Enum.UI_2D; root.addComponent(UITransform).setContentSize(size.width, size.height);
+    const cardBottom = compact ? -195 : -275; const cardHeight = compact ? 390 : 550;
+    const graphics = root.addComponent(Graphics); graphics.fillColor = new Color(8, 31, 74, 255); graphics.rect(-size.width / 2, -size.height / 2, size.width, size.height); graphics.fill(); graphics.fillColor = new Color(24, 74, 145, 255); graphics.circle(-size.width * 0.4, size.height * 0.4, size.width * 0.45); graphics.fill(); graphics.fillColor = new Color(255, 255, 255, 250); graphics.roundRect(-345, cardBottom, 690, cardHeight, 28); graphics.fill(); graphics.strokeColor = new Color(126, 187, 245, 255); graphics.lineWidth = 3; graphics.roundRect(-345, cardBottom, 690, cardHeight, 28); graphics.stroke();
+    this.roomTitleLabel = this.addLabel(root, 'RoomTitle', '', new Vec3(0, compact ? 150 : 220, 0), 570, 40, 30, new Color(22, 75, 145));
+    this.addLabel(root, 'RoomPlayersHeading', '机组成员', new Vec3(0, compact ? 106 : 160, 0), 500, 30, 21, new Color(55, 81, 119));
+    this.roomPlayersLabel = this.addLabel(root, 'RoomPlayers', '', new Vec3(0, compact ? 25 : 65, 0), 570, 160, 19, new Color(37, 57, 85));
+    this.roomNoticeLabel = this.addLabel(root, 'RoomNotice', '', new Vec3(0, compact ? -75 : -95, 0), 570, 32, 17, new Color(76, 105, 140));
+    this.addLabel(root, 'RoomChatHint', '文字交流中的红字为全房间系统通知', new Vec3(0, compact ? -108 : -135, 0), 540, 25, 15, new Color(136, 105, 105));
+    root.setSiblingIndex(0); this.roomRoot = root;
+  }
+
+  private createDice(position: Vec3): void { const node = new Node('DiceFace'); node.setParent(this.getRuntimeRoot()); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(84, 84); node.setPosition(position); this.diceGraphics = node.addComponent(Graphics); node.on(Node.EventType.TOUCH_END, () => { if (this.rollButton?.interactable) this.node.emit('ui-action', 'ROLL_DICE'); }); this.drawDice(1); }
+  private drawDice(value: number): void {
+    const graphics = this.diceGraphics; if (!graphics) return;
+    const pips: Record<number, Array<[number, number]>> = { 1: [[0, 0]], 2: [[-19, 19], [19, -19]], 3: [[-19, 19], [0, 0], [19, -19]], 4: [[-19, 19], [19, 19], [-19, -19], [19, -19]], 5: [[-19, 19], [19, 19], [0, 0], [-19, -19], [19, -19]], 6: [[-19, 20], [19, 20], [-19, 0], [19, 0], [-19, -20], [19, -20]] };
+    graphics.clear(); graphics.fillColor = new Color(255, 255, 255, 248); graphics.roundRect(-40, -40, 80, 80, 16); graphics.fill(); graphics.strokeColor = new Color(35, 72, 126); graphics.lineWidth = 3; graphics.roundRect(-40, -40, 80, 80, 16); graphics.stroke(); graphics.fillColor = new Color(43, 122, 217); pips[Math.min(6, Math.max(1, Math.round(value)))].forEach(([x, y]) => { graphics.circle(x, y, 6); graphics.fill(); });
+  }
+
+  private createActionButton(title: string, action: string, position: Vec3, enabled: boolean, color = new Color(40, 117, 214), width = 150, height = 52, fontSize = 18): Button {
+    const node = new Node(`${action}Button`); node.setParent(this.getRuntimeRoot()); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(width, height); node.setPosition(position);
+    const graphics = node.addComponent(Graphics); graphics.fillColor = color; graphics.roundRect(-width / 2, -height / 2, width, height, 12); graphics.fill(); this.addLabel(node, `${action}Text`, title, Vec3.ZERO, width - 10, height - 8, fontSize, Color.WHITE);
+    const button = node.addComponent(Button); button.interactable = enabled;
+    node.on(Node.EventType.TOUCH_END, () => { if (button.interactable) this.node.emit('ui-action', action); else if (action === 'START_GAME' && this.currentScreen === 'ROOM' && this.roomOwnerId !== this.localPlayerId) this.showTooltip('非房主无法开始对局', node); });
+    if (action === 'START_GAME') { node.on(Node.EventType.MOUSE_ENTER, () => { if (!button.interactable && this.currentScreen === 'ROOM' && this.roomOwnerId !== this.localPlayerId) this.showTooltip('非房主无法开始对局', node); }); node.on(Node.EventType.MOUSE_LEAVE, () => this.hideTooltip()); }
+    this.actionButtons.set(action, button); return button;
+  }
+  /** Text-like tabs keep the account page light while remaining easy to click. */
+  private createAuthTab(parent: Node, mode: 'LOGIN' | 'REGISTER', title: string, position: Vec3): void {
+    const node = new Node(`AuthTab${mode}`); node.setParent(parent); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(104, 36); node.setPosition(position); node.addComponent(Graphics);
+    this.addLabel(node, `${mode}TabText`, title, new Vec3(0, 4, 0), 100, 28, 17, new Color(111, 130, 158));
+    node.on(Node.EventType.TOUCH_END, () => this.showAuthPage(mode));
+    this.authTabs.set(mode, node);
+  }
+  private updateAuthTabs(): void {
+    this.authTabs.forEach((node, mode) => {
+      const active = mode === this.authMode;
+      const graphics = node.getComponent(Graphics);
+      graphics?.clear();
+      if (active) { graphics!.fillColor = new Color(38, 112, 207); graphics!.roundRect(-40, -16, 80, 3, 1); graphics!.fill(); }
+      const label = node.getComponentInChildren(Label);
+      if (label) label.color = active ? new Color(28, 91, 180) : new Color(111, 130, 158);
+    });
+  }
+  private createRememberToggle(parent: Node, position: Vec3): void {
+    const node = new Node('RememberLoginToggle'); node.setParent(parent); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(280, 32); node.setPosition(position);
+    const graphics = node.addComponent(Graphics);
+    const text = this.addLabel(node, 'RememberLoginText', '', new Vec3(14, 0, 0), 245, 28, 14, new Color(81, 105, 142)); text.horizontalAlign = Label.HorizontalAlign.LEFT;
+    const redraw = (): void => {
+      graphics.clear(); graphics.fillColor = this.rememberLogin ? new Color(35, 119, 214) : new Color(255, 255, 255); graphics.roundRect(-130, -9, 18, 18, 4); graphics.fill(); graphics.strokeColor = new Color(79, 133, 203); graphics.lineWidth = 1.5; graphics.roundRect(-130, -9, 18, 18, 4); graphics.stroke();
+      if (this.rememberLogin) { graphics.strokeColor = Color.WHITE; graphics.lineWidth = 2; graphics.moveTo(-126, -1); graphics.lineTo(-123, -5); graphics.lineTo(-116, 4); graphics.stroke(); }
+      text.string = '自动登录（保存 30 天登录状态）';
+    };
+    node.on(Node.EventType.TOUCH_END, () => { this.rememberLogin = !this.rememberLogin; redraw(); });
+    redraw();
+  }
+  private createModalRoot(name: string): Node { const size = view.getVisibleSize(); const modal = new Node(name); modal.setParent(this.getRuntimeRoot()); modal.layer = Layers.Enum.UI_2D; modal.addComponent(UITransform).setContentSize(size); const graphics = modal.addComponent(Graphics); graphics.fillColor = new Color(8, 22, 46, 195); graphics.rect(-size.width / 2, -size.height / 2, size.width, size.height); graphics.fill(); modal.setSiblingIndex(this.getRuntimeRoot().children.length - 1); return modal; }
+  private createCard(parent: Node, name: string, width: number, height: number, fill: Color, border: Color): Node { const card = new Node(name); card.setParent(parent); card.layer = Layers.Enum.UI_2D; card.addComponent(UITransform).setContentSize(width, height); const graphics = card.addComponent(Graphics); graphics.fillColor = fill; graphics.roundRect(-width / 2, -height / 2, width, height, 22); graphics.fill(); graphics.strokeColor = border; graphics.lineWidth = 3; graphics.roundRect(-width / 2, -height / 2, width, height, 22); graphics.stroke(); return card; }
+  private createModalButton(parent: Node, title: string, position: Vec3, color: Color, handler: () => void, width = 155, height = 52, fontSize = 19): void { const node = new Node(`${title}Button`); node.setParent(parent); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(width, height); node.setPosition(position); const graphics = node.addComponent(Graphics); graphics.fillColor = color; graphics.roundRect(-width / 2, -height / 2, width, height, 11); graphics.fill(); this.addLabel(node, `${title}Text`, title, Vec3.ZERO, width - 10, height - 8, fontSize, Color.WHITE); node.on(Node.EventType.TOUCH_END, handler); }
+  private createTextInput(parent: Node, name: string, position: Vec3, width: number, placeholder: string, password = false): EditBox { const node = new Node(name); node.setParent(parent); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(width, 44); node.setPosition(position); const graphics = node.addComponent(Graphics); graphics.fillColor = new Color(246, 250, 255, 255); graphics.roundRect(-width / 2, -22, width, 44, 10); graphics.fill(); graphics.strokeColor = new Color(152, 181, 219, 255); graphics.lineWidth = 1.5; graphics.roundRect(-width / 2, -22, width, 44, 10); graphics.stroke(); const label = this.addLabel(node, `${name}Text`, '', Vec3.ZERO, width - 20, 36, 17, new Color(38, 64, 104)); const hint = this.addLabel(node, `${name}Hint`, '', Vec3.ZERO, width - 20, 36, 16, new Color(118, 136, 160)); label.verticalAlign = Label.VerticalAlign.CENTER; hint.verticalAlign = Label.VerticalAlign.CENTER; const input = node.addComponent(EditBox); ['TEXT_LABEL', 'PLACEHOLDER_LABEL'].forEach((automaticName) => node.getChildByName(automaticName)?.destroy()); input.textLabel = label; input.placeholderLabel = hint; input.placeholder = placeholder; input.inputMode = EditBox.InputMode.SINGLE_LINE; if (password) input.inputFlag = EditBox.InputFlag.PASSWORD; return input; }
+  private installWebInputStyle(): void {
+    if (typeof document === 'undefined' || document.getElementById('SkillLudoEditBoxStyle')) return;
+    const style = document.createElement('style'); style.id = 'SkillLudoEditBoxStyle';
+    style.textContent = '.cocosEditBox { box-sizing: border-box !important; margin: 0 !important; padding: 0 10px !important; line-height: 44px !important; overflow-y: hidden !important; } .cocosEditBox::-webkit-scrollbar { display: none; }';
+    document.head.appendChild(style);
+  }
+  private addLabel(parent: Node, name: string, text: string, position: Vec3, width: number, height: number, fontSize: number, color: Color): Label { const node = new Node(name); node.setParent(parent); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(width, height); node.setPosition(position); const label = node.addComponent(Label); label.fontSize = fontSize; label.lineHeight = fontSize + 6; label.color = color; label.string = text; label.horizontalAlign = Label.HorizontalAlign.CENTER; return label; }
+  private renderChatEntries(): void {
+    if (!this.chatLinesRoot?.isValid) return;
+    this.chatLineNodes.forEach((node) => node.destroy()); this.chatLineNodes = [];
+    this.chatEntries.slice(-8).forEach((entry, index) => {
+      const system = entry.kind === 'SYSTEM';
+      const ownMessage = !system && entry.senderId === this.localPlayerId;
+      const privateMessage = entry.kind === 'PRIVATE';
+      const prefix = system
+        ? `── ${entry.content} ──`
+        : privateMessage && ownMessage
+          ? `[私信给 ${entry.recipientNickname ?? '玩家'}] ${entry.content}`
+          : privateMessage
+            ? `[私信] ${entry.senderNickname ?? '玩家'}：${entry.content}`
+            : ownMessage
+              ? `我：${entry.content}`
+              : `${entry.senderNickname ?? '玩家'}：${entry.content}`;
+      const color = system ? new Color(224, 68, 68) : ownMessage ? new Color(35, 104, 192) : privateMessage ? new Color(121, 78, 170) : new Color(45, 61, 86);
+      const label = this.addLabel(this.chatLinesRoot!, `ChatLine${index}`, prefix, new Vec3(0, 112 - index * 31, 0), 550, 28, 16, color);
+      // Label defaults to auto-width. A fixed line box is required before left
+      // and right alignment can have a visible effect.
+      label.overflow = Label.Overflow.CLAMP;
+      label.horizontalAlign = system ? Label.HorizontalAlign.CENTER : ownMessage ? Label.HorizontalAlign.RIGHT : Label.HorizontalAlign.LEFT;
+      this.chatLineNodes.push(label.node);
+    });
+  }
+  private setActionVisible(action: string, active: boolean): void { const button = this.actionButtons.get(action); if (button) button.node.active = active; }
+  private showTooltip(text: string, anchor: Node): void { this.hideTooltip(); const label = this.addLabel(this.getRuntimeRoot(), 'StartOwnerTooltip', text, anchor.position.clone().add(new Vec3(0, 46, 0)), 240, 30, 16, new Color(255, 237, 237)); label.node.setSiblingIndex(this.getRuntimeRoot().children.length - 1); }
+  private hideTooltip(): void { const tooltip = this.getRuntimeRoot().getChildByName('StartOwnerTooltip'); if (tooltip) tooltip.destroy(); }
+  private drawCloud(graphics: Graphics, x: number, y: number, scale: number): void { graphics.fillColor = new Color(255, 255, 255, 34); graphics.circle(x - 42 * scale, y, 24 * scale); graphics.circle(x - 5 * scale, y + 12 * scale, 34 * scale); graphics.circle(x + 35 * scale, y, 26 * scale); graphics.fill(); }
+  private playerLine(player: PlayerPublicState): string { return `${this.colorIcon(player.color)} ${player.nickname}　${player.ready ? '已准备' : '未准备'}　${player.connected ? '在线' : '重连中'}`; }
+  private statusFor(snapshot: GameSnapshot, myTurn: boolean): string { if (snapshot.phase === 'GAME_OVER') return '本局结束'; if (myTurn && snapshot.phase === 'WAIT_ROLL') return '轮到你投骰子'; if (myTurn && snapshot.phase === 'WAIT_SELECT_PIECE') return '请选择高亮飞机'; const current = snapshot.players.find((player) => player.id === snapshot.currentPlayerId)?.nickname ?? '玩家'; return `等待 ${current} 操作`; }
+  private colorIcon(color: string): string { return ({ RED: '🔴', YELLOW: '🟡', BLUE: '🔵', GREEN: '🟢' } as Record<string, string>)[color] ?? '⚪'; }
+  private setText(label: Label | null, value: string): void { if (label) label.string = value; }
+  private getRuntimeRoot(): Node { if (this.runtimeRoot?.isValid) return this.runtimeRoot; let current: Node | null = this.node; while (current && !current.getComponent(Canvas)) current = current.parent; const root = new Node('LudoRuntimeHUD'); root.setParent(current ?? this.node); root.layer = Layers.Enum.UI_2D; root.addComponent(UITransform).setContentSize(view.getVisibleSize()); root.setPosition(Vec3.ZERO); this.runtimeRoot = root; return root; }
+}
+
+js.setClassAlias(GameUI, 'a2bbc8d8-a6fb-476c-a433-b316dedca61a');
