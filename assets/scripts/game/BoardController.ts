@@ -1,4 +1,4 @@
-import { _decorator, Canvas, Color, Component, Graphics, js, Layers, Node, resources, Sprite, SpriteFrame, tween, UITransform, Vec3 } from 'cc';
+import { _decorator, Canvas, Color, Component, Graphics, js, Label, Layers, Node, resources, Sprite, SpriteFrame, tween, UITransform, Vec3 } from 'cc';
 import { BoardLayout } from './BoardLayout';
 import type { GameSnapshot, MoveResult, Piece, PieceState, PlayerColor } from '../protocol/GameProtocol';
 
@@ -63,7 +63,9 @@ export class BoardController extends Component {
     if (!piece || !node || this.animating) return;
     this.animating = true;
     for (const progress of result.path) {
-      const state = progress >= 57 ? 'FINISHED' : progress >= 52 ? 'FINAL_PATH' : 'MAIN_PATH';
+      // A bounced move briefly touches the final square, but it has not
+      // completed until the final MoveResult destination is 57.
+      const state = progress >= 57 && result.toProgress === 57 ? 'FINISHED' : progress >= 52 ? 'FINAL_PATH' : 'MAIN_PATH';
       await this.moveNode(node, BoardLayout.piecePosition(piece.color, progress, state));
     }
     this.animating = false;
@@ -116,7 +118,9 @@ export class BoardController extends Component {
     snapshot.pieces.forEach((piece, index) => {
       const node = this.getOrCreatePieceNode(piece);
       const stackIndex = this.stackIndex(piece, snapshot.pieces, index);
+      const stackCount = this.stackCount(piece, snapshot.pieces);
       node.setPosition(BoardLayout.piecePosition(piece.color, piece.progress, piece.state, stackIndex));
+      this.updatePieceAppearance(node, piece, stackCount);
       node.active = true;
     });
     const occupiedColors = new Set(snapshot.pieces.map((piece) => piece.color));
@@ -154,7 +158,7 @@ export class BoardController extends Component {
     node.layer = Layers.Enum.UI_2D;
     node.addComponent(UITransform).setContentSize(38, 38);
     const graphics = node.addComponent(Graphics);
-    this.drawPlane(graphics, pieceColors[piece.color]);
+    this.drawPlane(graphics, pieceColors[piece.color], piece.state === 'FINISHED');
     if (!this.previewPieceColors.has(piece.id)) node.on(Node.EventType.TOUCH_END, () => root.emit('piece-selected', piece.id));
     this.pieceNodes.set(piece.id, node);
     return node;
@@ -162,14 +166,22 @@ export class BoardController extends Component {
 
   /** Mirrors GameRules.calculateMove for display only; it never changes game state. */
   private previewResult(piece: Piece, dice: number): { progress: number; state: PieceState; description: string } | null {
-    if (piece.state === 'AIRPORT' && dice !== 6) return null;
-    if (piece.state === 'FINISHED' || (piece.state !== 'AIRPORT' && piece.progress + dice > 57)) return null;
+    if (piece.state === 'AIRPORT' && dice !== 5 && dice !== 6) return null;
+    if (piece.state === 'FINISHED') return null;
 
-    let progress = piece.state === 'AIRPORT' ? 0 : piece.progress + dice;
+    let progress = piece.state === 'AIRPORT' ? 0 : piece.progress;
     const events: string[] = [piece.state === 'AIRPORT' ? '起飞至起点' : `前进 ${dice} 格`];
+    if (piece.state !== 'AIRPORT') {
+      let direction = 1;
+      for (let step = 0; step < dice; step += 1) {
+        if (progress === 57) direction = -1;
+        progress += direction;
+      }
+      if (piece.progress + dice > 57) events.push('越过终点后折返');
+    }
     // The server's colour-specific cells are route-relative: same-colour cells
     // occur every four positions, while each colour's flight trigger is 18.
-    if (progress < 52 && progress % 4 === 0 && progress + 4 <= 57) {
+    if (piece.state !== 'AIRPORT' && progress < 52 && progress % 4 === 0 && progress + 4 < 52) {
       progress += 4;
       events.push('触发同色跳跃');
     }
@@ -243,8 +255,44 @@ export class BoardController extends Component {
   }
 
   /** A small, clear plane silhouette drawn in code so no aircraft sprite sheet is required. */
-  private drawPlane(graphics: Graphics, color: Color): void {
+  private updatePieceAppearance(node: Node, piece: Piece, stackCount: number): void {
+    const graphics = node.getComponent(Graphics);
+    if (graphics) this.drawPlane(graphics, pieceColors[piece.color], piece.state === 'FINISHED');
+    this.setStackBadge(node, piece, stackCount);
+  }
+
+  private setStackBadge(pieceNode: Node, piece: Piece, count: number): void {
+    let badge = pieceNode.getChildByName('StackBadge');
+    const visible = piece.state !== 'AIRPORT' && piece.state !== 'FINISHED' && count > 1;
+    if (!visible) {
+      if (badge) badge.active = false;
+      return;
+    }
+    if (!badge) {
+      badge = new Node('StackBadge'); badge.setParent(pieceNode); badge.layer = Layers.Enum.UI_2D; badge.addComponent(UITransform).setContentSize(20, 20); badge.setPosition(15, 14, 0);
+      const graphics = badge.addComponent(Graphics); graphics.fillColor = new Color(29, 53, 90, 245); graphics.circle(0, 0, 10); graphics.fill(); graphics.strokeColor = Color.WHITE; graphics.lineWidth = 1.4; graphics.circle(0, 0, 9); graphics.stroke();
+      const label = new Node('StackCount'); label.setParent(badge); label.layer = Layers.Enum.UI_2D; label.addComponent(UITransform).setContentSize(20, 18); const text = label.addComponent(Label); text.fontSize = 12; text.lineHeight = 14; text.color = Color.WHITE; text.horizontalAlign = Label.HorizontalAlign.CENTER; text.verticalAlign = Label.VerticalAlign.CENTER;
+    }
+    const label = badge.getComponentInChildren(Label);
+    if (label) label.string = String(count);
+    badge.active = true;
+  }
+
+  private drawPlane(graphics: Graphics, color: Color, finished = false): void {
     graphics.clear();
+    if (finished) {
+      graphics.fillColor = color;
+      graphics.circle(0, 0, 17);
+      graphics.fill();
+      graphics.strokeColor = Color.WHITE;
+      graphics.lineWidth = 2.5;
+      graphics.moveTo(-8, 0); graphics.lineTo(-2, -7); graphics.lineTo(9, 8); graphics.stroke();
+      graphics.strokeColor = new Color(39, 54, 78, 220);
+      graphics.lineWidth = 1.6;
+      graphics.circle(0, 0, 17);
+      graphics.stroke();
+      return;
+    }
     graphics.fillColor = new Color(255, 255, 255, 235);
     graphics.circle(0, 0, 17);
     graphics.fill();
@@ -319,6 +367,10 @@ export class BoardController extends Component {
   private stackIndex(piece: Piece, pieces: Piece[], ownIndex: number): number {
     const matching = pieces.filter((candidate) => candidate.state === piece.state && candidate.color === piece.color && candidate.progress === piece.progress);
     return matching.findIndex((candidate) => candidate.id === pieces[ownIndex].id);
+  }
+
+  private stackCount(piece: Piece, pieces: Piece[]): number {
+    return pieces.filter((candidate) => candidate.state === piece.state && candidate.color === piece.color && candidate.progress === piece.progress).length;
   }
 
   private moveNode(node: Node, position: Vec3): Promise<void> {

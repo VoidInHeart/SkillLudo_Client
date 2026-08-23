@@ -1,4 +1,4 @@
-import { _decorator, Button, Canvas, Color, Component, EditBox, Graphics, js, Label, Layers, Node, UITransform, Vec3, view } from 'cc';
+import { _decorator, Button, Canvas, Color, Component, EditBox, Graphics, js, Label, Layers, Node, tween, UITransform, Vec3, view } from 'cc';
 import type { ChatEntry, GameSnapshot, PlayerColor, PlayerPublicState } from '../protocol/GameProtocol';
 
 const { ccclass, property } = _decorator;
@@ -6,6 +6,7 @@ type Screen = 'HOME' | 'AUTH' | 'ROOM' | 'GAME';
 
 export interface MoveConfirmation { color: PlayerColor; dice: number; description: string; }
 export interface AccountActionData { username: string; password: string; nickname: string; rememberMe: boolean; }
+export interface AccountProfile { playerId: string; nickname: string; }
 
 /** Runtime UI with three deliberately separate surfaces: home, room lobby and game HUD. */
 @ccclass('GameUI')
@@ -30,11 +31,17 @@ export class GameUI extends Component {
   private authMode: 'LOGIN' | 'REGISTER' = 'LOGIN';
   private rememberLogin = true;
   private homeConnectionLabel: Label | null = null;
+  private homeAvatarInitial: Label | null = null;
+  private accountDrawer: Node | null = null;
+  private accountProfile: AccountProfile | null = null;
   private roomRoot: Node | null = null;
   private roomTitleLabel: Label | null = null;
   private roomPlayersLabel: Label | null = null;
   private roomNoticeLabel: Label | null = null;
   private diceGraphics: Graphics | null = null;
+  private diceRolling = false;
+  private diceRollToken = 0;
+  private displayedDice = 1;
   private moveConfirmModal: Node | null = null;
   private joinRoomModal: Node | null = null;
   private joinRoomNoticeLabel: Label | null = null;
@@ -55,6 +62,12 @@ export class GameUI extends Component {
   }
 
   public showHome(): void { this.setScreen('HOME'); }
+  /** Updated after an account session is authenticated. The side drawer is intentionally
+   * local-account based for now, leaving a stable place to attach a WeChat avatar later. */
+  public setAccountProfile(profile: AccountProfile): void {
+    this.accountProfile = profile;
+    this.updateHomeAvatar();
+  }
   /** Kept for existing scene callers; waiting rooms are rendered by render(). */
   public setGameMode(inGame: boolean): void { this.setScreen(inGame ? 'GAME' : 'HOME'); }
 
@@ -66,10 +79,13 @@ export class GameUI extends Component {
     }
     this.setScreen('GAME');
     const myTurn = snapshot.currentPlayerId === localPlayerId;
-    this.setText(this.roomLabel, `房间：${snapshot.roomId}（第 ${snapshot.turnNumber} 回合）`);
+    this.setText(this.roomLabel, `房间号：${snapshot.roomId}（第 ${snapshot.turnNumber} 回合）`);
     this.setText(this.playersLabel, snapshot.players.map((player) => this.playerLine(player)).join('\n'));
-    this.setText(this.diceLabel, snapshot.dice ? `骰子：${snapshot.dice}` : '骰子：等待投掷');
-    this.drawDice(snapshot.dice ?? 1);
+    if (!this.diceRolling) {
+      this.displayedDice = snapshot.dice ?? this.displayedDice;
+      this.setText(this.diceLabel, snapshot.dice ? `骰子：${snapshot.dice}` : '骰子：等待投掷');
+      this.drawDice(this.displayedDice);
+    }
     this.setText(this.rankingsLabel, snapshot.rankings.length ? `排名：${snapshot.rankings.map((id, index) => `${index + 1}.${snapshot.players.find((p) => p.id === id)?.nickname ?? id}`).join('  ')}` : '');
     this.setText(this.statusLabel, this.statusFor(snapshot, myTurn));
     if (this.rollButton) this.rollButton.interactable = snapshot.phase === 'WAIT_ROLL' && myTurn;
@@ -91,6 +107,39 @@ export class GameUI extends Component {
     else this.setText(this.statusLabel, message);
   }
   public getNickname(): string { return this.nicknameInput?.string.trim() ?? ''; }
+
+  /** The server determines the number; this only presents the result with a small pseudo-3D tumble. */
+  public playDiceRoll(value: number): void {
+    const dice = Math.min(6, Math.max(1, Math.round(value)));
+    const graphics = this.diceGraphics;
+    if (!graphics) return;
+    const token = ++this.diceRollToken;
+    const node = graphics.node;
+    this.diceRolling = true;
+    this.setText(this.diceLabel, '骰子：滚动中…');
+    for (let index = 0; index < 8; index += 1) {
+      this.scheduleOnce(() => {
+        if (token !== this.diceRollToken) return;
+        this.drawDice(Math.floor(Math.random() * 6) + 1);
+        node.setScale(index % 2 ? new Vec3(0.78, 1.18, 1) : new Vec3(1.16, 0.8, 1));
+        node.angle = index % 2 ? -11 : 11;
+      }, index * 0.065);
+    }
+    this.scheduleOnce(() => {
+      if (token !== this.diceRollToken) return;
+      this.displayedDice = dice;
+      this.drawDice(dice);
+      node.angle = 0;
+      tween(node).to(0.1, { scale: new Vec3(1.15, 0.86, 1) }).to(0.14, { scale: Vec3.ONE }).start();
+      this.diceRolling = false;
+      this.setText(this.diceLabel, `骰子：${dice}`);
+    }, 0.56);
+  }
+
+  public setDiceRequestPending(): void {
+    if (this.rollButton) this.rollButton.interactable = false;
+    this.setText(this.diceLabel, '骰子：请求中…');
+  }
 
   public setChatEntries(entries: ChatEntry[]): void { this.chatEntries = entries.slice(-80); this.renderChatEntries(); }
   public appendChatEntry(entry: ChatEntry): void {
@@ -188,12 +237,14 @@ export class GameUI extends Component {
 
   private setScreen(screen: Screen): void {
     this.currentScreen = screen;
+    if (screen !== 'HOME') this.closeAccountDrawer();
     const home = screen === 'HOME'; const auth = screen === 'AUTH'; const room = screen === 'ROOM'; const game = screen === 'GAME';
     if (this.homeRoot) this.homeRoot.active = home;
     if (this.authRoot) this.authRoot.active = auth;
     if (this.roomRoot) this.roomRoot.active = room;
     ['CREATE_ROOM', 'JOIN_ROOM', 'QUICK_MATCH'].forEach((action) => this.setActionVisible(action, home));
     ['READY', 'START_GAME', 'CHAT', 'LEAVE_ROOM'].forEach((action) => this.setActionVisible(action, room));
+    this.setActionVisible('GAME_CHAT', game);
     this.setActionVisible('ROLL_DICE', game);
     if (this.statusLabel) this.statusLabel.node.active = game;
     if (this.homeConnectionLabel) this.homeConnectionLabel.node.active = home;
@@ -211,57 +262,62 @@ export class GameUI extends Component {
     // shorter than the project's design height. Keep the lobby usable in that
     // compact viewport instead of letting the join controls fall below it.
     const compact = size.height < 600;
+    const home = this.getHomeLayout(size);
+    const room = this.getRoomLayout(size);
     this.createHomeVisual(size); this.createAuthVisual(size); this.createRoomVisual(size);
     this.statusLabel = this.addLabel(this.getRuntimeRoot(), 'Status', '', new Vec3(0, -size.height / 2 + (compact ? 53 : 42), 0), 720, 34, 19, new Color(232, 243, 255));
-    this.roomLabel = this.addLabel(this.getRuntimeRoot(), 'GameRoom', '', new Vec3(0, size.height / 2 - 70, 0), 620, 28, 18, new Color(228, 241, 255));
+    this.roomLabel = this.addLabel(this.getRuntimeRoot(), 'GameRoom', '', new Vec3(0, size.height / 2 - 70, 0), 620, 28, 19, new Color(18, 58, 108));
     this.playersLabel = this.addLabel(this.getRuntimeRoot(), 'GamePlayers', '', new Vec3(-size.width / 2 + 135, size.height / 2 - 135, 0), 250, 130, 16, new Color(31, 53, 85));
     this.diceLabel = this.addLabel(this.getRuntimeRoot(), 'Dice', '', new Vec3(size.width / 2 - 120, size.height / 2 - 120, 0), 170, 30, 19, new Color(31, 53, 85));
     this.createDice(new Vec3(size.width / 2 - 120, size.height / 2 - 185, 0));
     this.rankingsLabel = this.addLabel(this.getRuntimeRoot(), 'Rankings', '', new Vec3(0, -size.height / 2 + 120, 0), 600, 30, 17, new Color(31, 53, 85));
-    this.createActionButton('快速匹配', 'QUICK_MATCH', new Vec3(0, compact ? -18 : -86, 0), true, new Color(35, 145, 92));
-    this.createActionButton('创建房间', 'CREATE_ROOM', new Vec3(-92, compact ? -78 : -146, 0), true, new Color(40, 117, 214), 150, 46, 16);
-    this.createActionButton('加入房间', 'JOIN_ROOM', new Vec3(92, compact ? -78 : -146, 0), true, new Color(56, 117, 198), 150, 46, 16);
-    this.readyButton = this.createActionButton('准备', 'READY', new Vec3(-105, compact ? -122 : -175, 0), false);
-    this.startButton = this.createActionButton('开始对局', 'START_GAME', new Vec3(105, compact ? -122 : -175, 0), false, new Color(35, 145, 92));
+    this.createActionButton('快速匹配', 'QUICK_MATCH', new Vec3(0, home.quickY, 0), true, new Color(35, 145, 92), home.quickWidth, home.buttonHeight, home.buttonFont);
+    this.createActionButton('创建房间', 'CREATE_ROOM', new Vec3(-home.columnX, home.actionY, 0), true, new Color(40, 117, 214), home.buttonWidth, home.buttonHeight, home.buttonFont);
+    this.createActionButton('加入房间', 'JOIN_ROOM', new Vec3(home.columnX, home.actionY, 0), true, new Color(56, 117, 198), home.buttonWidth, home.buttonHeight, home.buttonFont);
+    this.readyButton = this.createActionButton('准备', 'READY', new Vec3(-room.columnX, room.firstRowY, 0), false, new Color(40, 117, 214), room.buttonWidth, room.buttonHeight, room.buttonFont);
+    this.startButton = this.createActionButton('开始对局', 'START_GAME', new Vec3(room.columnX, room.firstRowY, 0), false, new Color(35, 145, 92), room.buttonWidth, room.buttonHeight, room.buttonFont);
     // Keep the two room-action rows on the exact same two-column grid.
-    this.createActionButton('文字交流', 'CHAT', new Vec3(-105, compact ? -177 : -238, 0), true, new Color(120, 91, 177));
-    this.createActionButton('离开房间', 'LEAVE_ROOM', new Vec3(105, compact ? -177 : -238, 0), true, new Color(135, 83, 86));
+    this.createActionButton('聊天', 'CHAT', new Vec3(-room.columnX, room.secondRowY, 0), true, new Color(120, 91, 177), room.buttonWidth, room.buttonHeight, room.buttonFont);
+    this.createActionButton('离开房间', 'LEAVE_ROOM', new Vec3(room.columnX, room.secondRowY, 0), true, new Color(135, 83, 86), room.buttonWidth, room.buttonHeight, room.buttonFont);
+    this.createActionButton('聊天', 'GAME_CHAT', new Vec3(size.width / 2 - 95, -size.height / 2 + 126, 0), true, new Color(120, 91, 177), 150, 48, 18);
     this.rollButton = this.createActionButton('投骰子', 'ROLL_DICE', new Vec3(size.width / 2 - 95, -size.height / 2 + 58, 0), false);
     this.showStatus('连接游戏服务器中…');
   }
 
   private createHomeVisual(size: { width: number; height: number }): void {
-    const compact = size.height < 600;
+    const layout = this.getHomeLayout(size);
     const root = new Node('NationalLudoHome'); root.setParent(this.getRuntimeRoot()); root.layer = Layers.Enum.UI_2D; root.addComponent(UITransform).setContentSize(size.width, size.height);
     const graphics = root.addComponent(Graphics);
     graphics.fillColor = new Color(8, 31, 74, 255); graphics.rect(-size.width / 2, -size.height / 2, size.width, size.height); graphics.fill();
     graphics.fillColor = new Color(20, 74, 145, 255); graphics.circle(-size.width * 0.34, size.height * 0.42, size.width * 0.46); graphics.fill();
     graphics.fillColor = new Color(15, 56, 116, 255); graphics.circle(size.width * 0.37, -size.height * 0.35, size.width * 0.52); graphics.fill();
-    this.drawCloud(graphics, -size.width * 0.37, 140, 1.15); this.drawCloud(graphics, size.width * 0.34, -50, 0.82);
-    if (!compact) {
+    this.drawCloud(graphics, -size.width * 0.37, size.height * 0.1, layout.portrait ? 1.45 : 1.15); this.drawCloud(graphics, size.width * 0.34, -size.height * 0.07, layout.portrait ? 1.05 : 0.82);
+    if (!layout.compact) {
       const colours = [new Color(232, 73, 73), new Color(241, 190, 55), new Color(65, 142, 234), new Color(78, 177, 94)];
-      [[-72, 0], [0, 72], [72, 0], [0, -72]].forEach((point, index) => { graphics.fillColor = colours[index]; graphics.circle(point[0], 125 + point[1], 34); graphics.fill(); });
-      graphics.fillColor = Color.WHITE; graphics.circle(0, 125, 31); graphics.fill(); graphics.fillColor = new Color(16, 70, 142); graphics.moveTo(0, 151); graphics.lineTo(-15, 121); graphics.lineTo(0, 95); graphics.lineTo(15, 121); graphics.close(); graphics.fill();
+      const dotScale = layout.portrait ? 1.25 : 1;
+      [[-72, 0], [0, 72], [72, 0], [0, -72]].forEach((point, index) => { graphics.fillColor = colours[index]; graphics.circle(point[0] * dotScale, layout.planeY + point[1] * dotScale, 34 * dotScale); graphics.fill(); });
+      graphics.fillColor = Color.WHITE; graphics.circle(0, layout.planeY, 31 * dotScale); graphics.fill(); graphics.fillColor = new Color(16, 70, 142); graphics.moveTo(0, layout.planeY + 26 * dotScale); graphics.lineTo(-15 * dotScale, layout.planeY - 4 * dotScale); graphics.lineTo(0, layout.planeY - 30 * dotScale); graphics.lineTo(15 * dotScale, layout.planeY - 4 * dotScale); graphics.close(); graphics.fill();
     }
-    const cardBottom = compact ? -198 : -275; const cardHeight = compact ? 326 : 340;
-    graphics.fillColor = new Color(255, 255, 255, 246); graphics.roundRect(-290, cardBottom, 580, cardHeight, 26); graphics.fill(); graphics.strokeColor = new Color(142, 194, 244); graphics.lineWidth = 2; graphics.roundRect(-290, cardBottom, 580, cardHeight, 26); graphics.stroke();
-    this.addLabel(root, 'NationalLudoTitle', '国家版飞行棋', new Vec3(0, compact ? 180 : 242, 0), 720, 62, 46, Color.WHITE);
-    this.addLabel(root, 'NationalLudoSubtitle', '四人联机 · 一掷定乾坤', new Vec3(0, compact ? 146 : 195, 0), 520, 30, 20, new Color(205, 230, 255));
-    this.addLabel(root, 'LobbyHeading', '选择你的航程', new Vec3(0, compact ? 89 : 48, 0), 300, 34, 24, new Color(22, 75, 145));
-    this.homeConnectionLabel = this.addLabel(root, 'HomeConnection', '连接游戏服务器中…', new Vec3(0, compact ? 57 : 16, 0), 430, 26, 15, new Color(66, 131, 101));
-    this.addLabel(root, 'RoomHint', '快速匹配，或创建 / 加入好友房间', new Vec3(0, compact ? 30 : -15, 0), 430, 26, 15, new Color(106, 126, 155));
+    graphics.fillColor = new Color(255, 255, 255, 246); graphics.roundRect(-layout.cardWidth / 2, layout.cardBottom, layout.cardWidth, layout.cardHeight, layout.portrait ? 32 : 26); graphics.fill(); graphics.strokeColor = new Color(142, 194, 244); graphics.lineWidth = layout.portrait ? 3 : 2; graphics.roundRect(-layout.cardWidth / 2, layout.cardBottom, layout.cardWidth, layout.cardHeight, layout.portrait ? 32 : 26); graphics.stroke();
+    this.addLabel(root, 'NationalLudoTitle', '国家版飞行棋', new Vec3(0, layout.titleY, 0), 720, 62, layout.portrait ? 52 : 46, Color.WHITE);
+    this.addLabel(root, 'NationalLudoSubtitle', '四人联机 · 一掷定乾坤', new Vec3(0, layout.subtitleY, 0), 520, 30, layout.portrait ? 22 : 20, new Color(205, 230, 255));
+    this.addLabel(root, 'LobbyHeading', '选择你的航程', new Vec3(0, layout.headingY, 0), 420, 38, layout.portrait ? 29 : 24, new Color(22, 75, 145));
+    this.homeConnectionLabel = this.addLabel(root, 'HomeConnection', '连接游戏服务器中…', new Vec3(0, layout.connectionY, 0), 500, 28, layout.portrait ? 18 : 15, new Color(66, 131, 101));
+    this.addLabel(root, 'RoomHint', '快速匹配，或创建 / 加入好友房间', new Vec3(0, layout.hintY, 0), 500, 28, layout.portrait ? 17 : 15, new Color(106, 126, 155));
+    this.createHomeAvatar(root, size);
     root.setSiblingIndex(0); this.homeRoot = root;
   }
 
   private createAuthVisual(size: { width: number; height: number }): void {
     const compact = size.height < 600;
+    const portrait = size.height > size.width;
     const root = new Node('NationalLudoAccountPage'); root.setParent(this.getRuntimeRoot()); root.layer = Layers.Enum.UI_2D; root.addComponent(UITransform).setContentSize(size.width, size.height);
     const graphics = root.addComponent(Graphics);
     graphics.fillColor = new Color(11, 30, 66, 255); graphics.rect(-size.width / 2, -size.height / 2, size.width, size.height); graphics.fill();
     graphics.fillColor = new Color(36, 89, 165, 255); graphics.circle(-size.width * 0.32, size.height * 0.42, size.width * 0.47); graphics.fill();
     graphics.fillColor = new Color(39, 65, 126, 255); graphics.circle(size.width * 0.42, -size.height * 0.28, size.width * 0.5); graphics.fill();
     this.drawCloud(graphics, -size.width * 0.33, -35, 1.2); this.drawCloud(graphics, size.width * 0.27, 125, 0.8);
-    const card = this.createCard(root, 'AccountPageCard', 560, compact ? 416 : 500, new Color(250, 252, 255, 250), new Color(137, 187, 242));
+    const card = this.createCard(root, 'AccountPageCard', portrait ? Math.min(size.width * 0.92, 660) : 560, portrait ? Math.min(size.height * 0.68, 820) : compact ? 416 : 500, new Color(250, 252, 255, 250), new Color(137, 187, 242));
     this.addLabel(card, 'AuthBrand', '国家版飞行棋', new Vec3(0, compact ? 167 : 205, 0), 440, 38, 28, new Color(24, 73, 144));
     this.addLabel(card, 'AuthSubtitle', '账号中心', new Vec3(0, compact ? 132 : 162, 0), 430, 28, 18, new Color(93, 117, 151));
     this.authNoticeLabel = this.addLabel(card, 'AuthNotice', '', new Vec3(0, compact ? 101 : 128, 0), 470, 30, 15, new Color(98, 115, 140));
@@ -301,23 +357,155 @@ export class GameUI extends Component {
   }
 
   private createRoomVisual(size: { width: number; height: number }): void {
-    const compact = size.height < 600;
+    const layout = this.getRoomLayout(size);
     const root = new Node('LudoRoomLobby'); root.setParent(this.getRuntimeRoot()); root.layer = Layers.Enum.UI_2D; root.addComponent(UITransform).setContentSize(size.width, size.height);
-    const cardBottom = compact ? -195 : -275; const cardHeight = compact ? 390 : 550;
-    const graphics = root.addComponent(Graphics); graphics.fillColor = new Color(8, 31, 74, 255); graphics.rect(-size.width / 2, -size.height / 2, size.width, size.height); graphics.fill(); graphics.fillColor = new Color(24, 74, 145, 255); graphics.circle(-size.width * 0.4, size.height * 0.4, size.width * 0.45); graphics.fill(); graphics.fillColor = new Color(255, 255, 255, 250); graphics.roundRect(-345, cardBottom, 690, cardHeight, 28); graphics.fill(); graphics.strokeColor = new Color(126, 187, 245, 255); graphics.lineWidth = 3; graphics.roundRect(-345, cardBottom, 690, cardHeight, 28); graphics.stroke();
-    this.roomTitleLabel = this.addLabel(root, 'RoomTitle', '', new Vec3(0, compact ? 150 : 220, 0), 570, 40, 30, new Color(22, 75, 145));
-    this.addLabel(root, 'RoomPlayersHeading', '机组成员', new Vec3(0, compact ? 106 : 160, 0), 500, 30, 21, new Color(55, 81, 119));
-    this.roomPlayersLabel = this.addLabel(root, 'RoomPlayers', '', new Vec3(0, compact ? 25 : 65, 0), 570, 160, 19, new Color(37, 57, 85));
-    this.roomNoticeLabel = this.addLabel(root, 'RoomNotice', '', new Vec3(0, compact ? -75 : -95, 0), 570, 32, 17, new Color(76, 105, 140));
-    this.addLabel(root, 'RoomChatHint', '文字交流中的红字为全房间系统通知', new Vec3(0, compact ? -108 : -135, 0), 540, 25, 15, new Color(136, 105, 105));
+    const graphics = root.addComponent(Graphics); graphics.fillColor = new Color(8, 31, 74, 255); graphics.rect(-size.width / 2, -size.height / 2, size.width, size.height); graphics.fill(); graphics.fillColor = new Color(24, 74, 145, 255); graphics.circle(-size.width * 0.4, size.height * 0.4, size.width * 0.45); graphics.fill(); graphics.fillColor = new Color(255, 255, 255, 250); graphics.roundRect(-layout.cardWidth / 2, layout.cardBottom, layout.cardWidth, layout.cardHeight, layout.portrait ? 32 : 28); graphics.fill(); graphics.strokeColor = new Color(126, 187, 245, 255); graphics.lineWidth = 3; graphics.roundRect(-layout.cardWidth / 2, layout.cardBottom, layout.cardWidth, layout.cardHeight, layout.portrait ? 32 : 28); graphics.stroke();
+    this.roomTitleLabel = this.addLabel(root, 'RoomTitle', '', new Vec3(0, layout.titleY, 0), 620, 44, layout.portrait ? 34 : 30, new Color(22, 75, 145));
+    this.addLabel(root, 'RoomPlayersHeading', '机组成员', new Vec3(0, layout.playersHeadingY, 0), 500, 34, layout.portrait ? 24 : 21, new Color(55, 81, 119));
+    this.roomPlayersLabel = this.addLabel(root, 'RoomPlayers', '', new Vec3(0, layout.playersY, 0), 600, layout.portrait ? 200 : 160, layout.portrait ? 21 : 19, new Color(37, 57, 85));
+    this.roomNoticeLabel = this.addLabel(root, 'RoomNotice', '', new Vec3(0, layout.noticeY, 0), 600, 36, layout.portrait ? 19 : 17, new Color(76, 105, 140));
+    this.addLabel(root, 'RoomChatHint', '聊天中的红字为全房间系统通知', new Vec3(0, layout.hintY, 0), 560, 28, layout.portrait ? 17 : 15, new Color(136, 105, 105));
     root.setSiblingIndex(0); this.roomRoot = root;
   }
 
-  private createDice(position: Vec3): void { const node = new Node('DiceFace'); node.setParent(this.getRuntimeRoot()); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(84, 84); node.setPosition(position); this.diceGraphics = node.addComponent(Graphics); node.on(Node.EventType.TOUCH_END, () => { if (this.rollButton?.interactable) this.node.emit('ui-action', 'ROLL_DICE'); }); this.drawDice(1); }
+  /** Keep the home-card proportions intentional on both the original desktop
+   * canvas and a tall phone canvas, instead of shrinking the desktop mockup. */
+  private getHomeLayout(size: { width: number; height: number }): {
+    compact: boolean; portrait: boolean; cardWidth: number; cardHeight: number; cardBottom: number;
+    titleY: number; subtitleY: number; planeY: number; headingY: number; connectionY: number; hintY: number;
+    quickY: number; actionY: number; quickWidth: number; buttonWidth: number; buttonHeight: number; buttonFont: number; columnX: number;
+  } {
+    const portrait = size.height > size.width;
+    const compact = !portrait && size.height < 600;
+    if (portrait) {
+      const cardHeight = Math.min(size.height * 0.6, 760);
+      const cardBottom = -size.height / 2 + 28;
+      const cardCenter = cardBottom + cardHeight / 2;
+      return {
+        compact, portrait, cardWidth: Math.min(size.width * 0.92, 660), cardHeight, cardBottom,
+        titleY: size.height * 0.35, subtitleY: size.height * 0.295, planeY: size.height * 0.18,
+        headingY: cardCenter + cardHeight * 0.32, connectionY: cardCenter + cardHeight * 0.22, hintY: cardCenter + cardHeight * 0.13,
+        quickY: cardCenter - cardHeight * 0.04, actionY: cardCenter - cardHeight * 0.17,
+        quickWidth: Math.min(size.width * 0.48, 320), buttonWidth: Math.min(size.width * 0.39, 260), buttonHeight: 62, buttonFont: 21, columnX: size.width * 0.22,
+      };
+    }
+    return {
+      compact, portrait, cardWidth: 580, cardHeight: compact ? 326 : 340, cardBottom: compact ? -198 : -275,
+      titleY: compact ? 180 : 242, subtitleY: compact ? 146 : 195, planeY: 125,
+      headingY: compact ? 89 : 48, connectionY: compact ? 57 : 16, hintY: compact ? 30 : -15,
+      quickY: compact ? -18 : -86, actionY: compact ? -78 : -146,
+      quickWidth: 150, buttonWidth: 150, buttonHeight: compact ? 46 : 46, buttonFont: 16, columnX: 92,
+    };
+  }
+
+  private getRoomLayout(size: { width: number; height: number }): {
+    portrait: boolean; cardWidth: number; cardHeight: number; cardBottom: number;
+    titleY: number; playersHeadingY: number; playersY: number; noticeY: number; hintY: number;
+    firstRowY: number; secondRowY: number; columnX: number; buttonWidth: number; buttonHeight: number; buttonFont: number;
+  } {
+    const portrait = size.height > size.width;
+    if (portrait) {
+      const cardHeight = Math.min(size.height * 0.78, 980);
+      const cardBottom = -size.height / 2 + 28;
+      const cardCenter = cardBottom + cardHeight / 2;
+      return {
+        portrait, cardWidth: Math.min(size.width * 0.94, 680), cardHeight, cardBottom,
+        titleY: cardCenter + cardHeight * 0.37, playersHeadingY: cardCenter + cardHeight * 0.27, playersY: cardCenter + cardHeight * 0.09,
+        noticeY: cardCenter - cardHeight * 0.15, hintY: cardCenter - cardHeight * 0.21,
+        firstRowY: cardCenter - cardHeight * 0.3, secondRowY: cardCenter - cardHeight * 0.4,
+        columnX: size.width * 0.22, buttonWidth: Math.min(size.width * 0.39, 260), buttonHeight: 62, buttonFont: 21,
+      };
+    }
+    const compact = size.height < 600;
+    return {
+      portrait, cardWidth: 690, cardHeight: compact ? 390 : 550, cardBottom: compact ? -195 : -275,
+      titleY: compact ? 150 : 220, playersHeadingY: compact ? 106 : 160, playersY: compact ? 25 : 65,
+      noticeY: compact ? -75 : -95, hintY: compact ? -108 : -135,
+      firstRowY: compact ? -122 : -175, secondRowY: compact ? -177 : -238,
+      columnX: 105, buttonWidth: 150, buttonHeight: 52, buttonFont: 18,
+    };
+  }
+
+  private createHomeAvatar(parent: Node, size: { width: number; height: number }): void {
+    const portrait = size.height > size.width;
+    const diameter = portrait ? 74 : 62;
+    const node = new Node('AccountAvatar'); node.setParent(parent); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(diameter, diameter);
+    node.setPosition(size.width / 2 - diameter / 2 - (portrait ? 24 : 32), size.height / 2 - diameter / 2 - (portrait ? 26 : 28), 0);
+    const graphics = node.addComponent(Graphics);
+    graphics.fillColor = new Color(247, 251, 255, 255); graphics.circle(0, 0, diameter / 2); graphics.fill();
+    graphics.strokeColor = new Color(125, 194, 255); graphics.lineWidth = 3; graphics.circle(0, 0, diameter / 2 - 1.5); graphics.stroke();
+    graphics.fillColor = new Color(35, 113, 205); graphics.circle(0, 0, diameter / 2 - 7); graphics.fill();
+    this.homeAvatarInitial = this.addLabel(node, 'AccountAvatarInitial', '我', Vec3.ZERO, diameter - 10, diameter - 10, portrait ? 28 : 23, Color.WHITE);
+    node.on(Node.EventType.TOUCH_END, () => this.showAccountDrawer());
+    this.updateHomeAvatar();
+  }
+
+  private updateHomeAvatar(): void {
+    if (!this.homeAvatarInitial) return;
+    const nickname = this.accountProfile?.nickname.trim() || '我';
+    this.homeAvatarInitial.string = nickname.slice(0, 1).toUpperCase();
+  }
+
+  private showAccountDrawer(): void {
+    if (!this.accountProfile) return;
+    this.closeAccountDrawer();
+    const size = view.getVisibleSize();
+    const portrait = size.height > size.width;
+    const modal = this.createModalRoot('AccountDrawer');
+    const width = portrait ? Math.min(size.width * 0.8, 570) : 390;
+    const height = portrait ? size.height - 58 : Math.min(size.height - 48, 580);
+    const drawer = this.createCard(modal, 'AccountDrawerPanel', width, height, new Color(250, 252, 255, 255), new Color(126, 187, 245));
+    drawer.setPosition(size.width / 2 - width / 2 - 18, 0, 0);
+    const avatar = new Node('ProfileAvatar'); avatar.setParent(drawer); avatar.layer = Layers.Enum.UI_2D; avatar.addComponent(UITransform).setContentSize(100, 100); avatar.setPosition(0, height / 2 - 105, 0);
+    const graphics = avatar.addComponent(Graphics); graphics.fillColor = new Color(41, 118, 211); graphics.circle(0, 0, 48); graphics.fill(); graphics.strokeColor = new Color(175, 219, 255); graphics.lineWidth = 3; graphics.circle(0, 0, 47); graphics.stroke();
+    this.addLabel(avatar, 'ProfileAvatarInitial', (this.accountProfile.nickname.trim() || '我').slice(0, 1).toUpperCase(), Vec3.ZERO, 86, 86, 38, Color.WHITE);
+    const top = height / 2;
+    const textColor = new Color(59, 82, 116);
+    this.addLabel(drawer, 'ProfileTitle', '账号详情', new Vec3(0, top - 190, 0), width - 44, 36, 27, new Color(23, 71, 140));
+    const accountId = this.formatAccountIdentifier(this.accountProfile.playerId);
+    const nickname = this.accountProfile.nickname.length > 14 ? `${this.accountProfile.nickname.slice(0, 14)}…` : this.accountProfile.nickname;
+    this.createProfileLine(drawer, 'ProfileNickname', `昵称：${nickname}`, top - 235, width, textColor);
+    this.createProfileLine(drawer, 'ProfileIdentifier', `账号标识：${accountId}`, top - 280, width, textColor, 54);
+    this.createProfileLine(drawer, 'ProfileLoginMethod', '登录方式：本地账号', top - 325, width, textColor);
+    this.createProfileLine(drawer, 'ProfileAvatarHeading', '头像设置', top - 400, width, textColor, 28, 18);
+    this.createProfileLine(drawer, 'ProfileAvatarHintOne', '当前为默认头像；接入微信登录后，', top - 435, width, textColor);
+    this.createProfileLine(drawer, 'ProfileAvatarHintTwo', '会在此同步微信昵称和头像。', top - 465, width, textColor);
+    this.createModalButton(drawer, '关闭', new Vec3(0, -height / 2 + 56, 0), new Color(92, 122, 160), () => this.closeAccountDrawer(), 150, 46, 17);
+    this.accountDrawer = modal;
+  }
+
+  private closeAccountDrawer(): void {
+    if (this.accountDrawer?.isValid) this.accountDrawer.destroy();
+    this.accountDrawer = null;
+  }
+
+  /** UUIDs are deliberately displayed in fixed, short rows so a sidebar never
+   * lets an unbroken account identifier bleed outside its bounds. */
+  private formatAccountIdentifier(value: string): string {
+    const lineLength = 22;
+    if (value.length <= lineLength) return value;
+    const parts: string[] = [];
+    for (let index = 0; index < value.length; index += lineLength) parts.push(value.slice(index, index + lineLength));
+    return parts.join('\n　　　　');
+  }
+
+  private createProfileLine(parent: Node, name: string, value: string, y: number, drawerWidth: number, color: Color, height = 28, fontSize = 16): void {
+    const line = this.addLabel(parent, name, value, new Vec3(0, y, 0), drawerWidth - 64, height, fontSize, color);
+    line.horizontalAlign = Label.HorizontalAlign.LEFT;
+    line.verticalAlign = Label.VerticalAlign.CENTER;
+    line.overflow = Label.Overflow.CLAMP;
+  }
+
+  private createDice(position: Vec3): void { const node = new Node('DiceFace'); node.setParent(this.getRuntimeRoot()); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(96, 96); node.setPosition(position); this.diceGraphics = node.addComponent(Graphics); node.on(Node.EventType.TOUCH_END, () => { if (this.rollButton?.interactable) this.node.emit('ui-action', 'ROLL_DICE'); }); this.drawDice(1); }
   private drawDice(value: number): void {
     const graphics = this.diceGraphics; if (!graphics) return;
     const pips: Record<number, Array<[number, number]>> = { 1: [[0, 0]], 2: [[-19, 19], [19, -19]], 3: [[-19, 19], [0, 0], [19, -19]], 4: [[-19, 19], [19, 19], [-19, -19], [19, -19]], 5: [[-19, 19], [19, 19], [0, 0], [-19, -19], [19, -19]], 6: [[-19, 20], [19, 20], [-19, 0], [19, 0], [-19, -20], [19, -20]] };
-    graphics.clear(); graphics.fillColor = new Color(255, 255, 255, 248); graphics.roundRect(-40, -40, 80, 80, 16); graphics.fill(); graphics.strokeColor = new Color(35, 72, 126); graphics.lineWidth = 3; graphics.roundRect(-40, -40, 80, 80, 16); graphics.stroke(); graphics.fillColor = new Color(43, 122, 217); pips[Math.min(6, Math.max(1, Math.round(value)))].forEach(([x, y]) => { graphics.circle(x, y, 6); graphics.fill(); });
+    graphics.clear();
+    // Offset faces and a shadow provide the intentional pseudo-3D depth; the
+    // node itself squashes and turns while the server result is revealed.
+    graphics.fillColor = new Color(8, 24, 53, 90); graphics.roundRect(-36, -45, 84, 84, 16); graphics.fill();
+    graphics.fillColor = new Color(31, 91, 173, 255); graphics.moveTo(-39, -36); graphics.lineTo(42, -36); graphics.lineTo(48, -42); graphics.lineTo(48, 31); graphics.lineTo(42, 37); graphics.lineTo(42, -30); graphics.lineTo(-39, -30); graphics.close(); graphics.fill();
+    graphics.fillColor = new Color(255, 255, 255, 250); graphics.roundRect(-42, -42, 84, 84, 16); graphics.fill(); graphics.strokeColor = new Color(35, 72, 126); graphics.lineWidth = 3; graphics.roundRect(-42, -42, 84, 84, 16); graphics.stroke(); graphics.fillColor = new Color(43, 122, 217); pips[Math.min(6, Math.max(1, Math.round(value)))].forEach(([x, y]) => { graphics.circle(x, y, 6); graphics.fill(); });
   }
 
   private createActionButton(title: string, action: string, position: Vec3, enabled: boolean, color = new Color(40, 117, 214), width = 150, height = 52, fontSize = 18): Button {
@@ -360,11 +548,56 @@ export class GameUI extends Component {
   private createModalRoot(name: string): Node { const size = view.getVisibleSize(); const modal = new Node(name); modal.setParent(this.getRuntimeRoot()); modal.layer = Layers.Enum.UI_2D; modal.addComponent(UITransform).setContentSize(size); const graphics = modal.addComponent(Graphics); graphics.fillColor = new Color(8, 22, 46, 195); graphics.rect(-size.width / 2, -size.height / 2, size.width, size.height); graphics.fill(); modal.setSiblingIndex(this.getRuntimeRoot().children.length - 1); return modal; }
   private createCard(parent: Node, name: string, width: number, height: number, fill: Color, border: Color): Node { const card = new Node(name); card.setParent(parent); card.layer = Layers.Enum.UI_2D; card.addComponent(UITransform).setContentSize(width, height); const graphics = card.addComponent(Graphics); graphics.fillColor = fill; graphics.roundRect(-width / 2, -height / 2, width, height, 22); graphics.fill(); graphics.strokeColor = border; graphics.lineWidth = 3; graphics.roundRect(-width / 2, -height / 2, width, height, 22); graphics.stroke(); return card; }
   private createModalButton(parent: Node, title: string, position: Vec3, color: Color, handler: () => void, width = 155, height = 52, fontSize = 19): void { const node = new Node(`${title}Button`); node.setParent(parent); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(width, height); node.setPosition(position); const graphics = node.addComponent(Graphics); graphics.fillColor = color; graphics.roundRect(-width / 2, -height / 2, width, height, 11); graphics.fill(); this.addLabel(node, `${title}Text`, title, Vec3.ZERO, width - 10, height - 8, fontSize, Color.WHITE); node.on(Node.EventType.TOUCH_END, handler); }
-  private createTextInput(parent: Node, name: string, position: Vec3, width: number, placeholder: string, password = false): EditBox { const node = new Node(name); node.setParent(parent); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(width, 44); node.setPosition(position); const graphics = node.addComponent(Graphics); graphics.fillColor = new Color(246, 250, 255, 255); graphics.roundRect(-width / 2, -22, width, 44, 10); graphics.fill(); graphics.strokeColor = new Color(152, 181, 219, 255); graphics.lineWidth = 1.5; graphics.roundRect(-width / 2, -22, width, 44, 10); graphics.stroke(); const label = this.addLabel(node, `${name}Text`, '', Vec3.ZERO, width - 20, 36, 17, new Color(38, 64, 104)); const hint = this.addLabel(node, `${name}Hint`, '', Vec3.ZERO, width - 20, 36, 16, new Color(118, 136, 160)); label.verticalAlign = Label.VerticalAlign.CENTER; hint.verticalAlign = Label.VerticalAlign.CENTER; const input = node.addComponent(EditBox); ['TEXT_LABEL', 'PLACEHOLDER_LABEL'].forEach((automaticName) => node.getChildByName(automaticName)?.destroy()); input.textLabel = label; input.placeholderLabel = hint; input.placeholder = placeholder; input.inputMode = EditBox.InputMode.SINGLE_LINE; if (password) input.inputFlag = EditBox.InputFlag.PASSWORD; return input; }
+  /** All web EditBoxes share one 44 px baseline. The HTML input is layered on
+   * top of these labels during editing, so alignment must be identical. */
+  private createTextInput(parent: Node, name: string, position: Vec3, width: number, placeholder: string, password = false): EditBox {
+    // EditBox reads inputMode while it is enabled.  Keep the node inactive until
+    // SINGLE_LINE has been assigned; otherwise Cocos creates an HTML textarea
+    // from its default ANY mode and it can never be converted back to an input.
+    const node = new Node(name);
+    node.active = false;
+    node.setParent(parent);
+    node.layer = Layers.Enum.UI_2D;
+    node.addComponent(UITransform).setContentSize(width, 44);
+    node.setPosition(position);
+
+    const graphics = node.addComponent(Graphics);
+    graphics.fillColor = new Color(246, 250, 255, 255);
+    graphics.roundRect(-width / 2, -22, width, 44, 10);
+    graphics.fill();
+    graphics.strokeColor = new Color(152, 181, 219, 255);
+    graphics.lineWidth = 1.5;
+    graphics.roundRect(-width / 2, -22, width, 44, 10);
+    graphics.stroke();
+
+    const label = this.addLabel(node, `${name}Text`, '', Vec3.ZERO, width - 20, 44, 17, new Color(38, 64, 104));
+    const hint = this.addLabel(node, `${name}Hint`, '', Vec3.ZERO, width - 20, 44, 16, new Color(118, 136, 160));
+    [label, hint].forEach((text) => {
+      // EditBox positions its labels using a top-left origin.  These labels are
+      // generated at runtime, so give them the anchor the engine expects.
+      text.node.getComponent(UITransform)!.setAnchorPoint(0, 1);
+      text.horizontalAlign = Label.HorizontalAlign.LEFT;
+      text.verticalAlign = Label.VerticalAlign.CENTER;
+      text.lineHeight = 22;
+    });
+
+    const input = node.addComponent(EditBox);
+    ['TEXT_LABEL', 'PLACEHOLDER_LABEL'].forEach((automaticName) => node.getChildByName(automaticName)?.destroy());
+    input.textLabel = label;
+    input.placeholderLabel = hint;
+    input.placeholder = placeholder;
+    input.inputMode = EditBox.InputMode.SINGLE_LINE;
+    input.inputFlag = password ? EditBox.InputFlag.PASSWORD : EditBox.InputFlag.DEFAULT;
+    node.active = true;
+    return input;
+  }
   private installWebInputStyle(): void {
     if (typeof document === 'undefined' || document.getElementById('SkillLudoEditBoxStyle')) return;
     const style = document.createElement('style'); style.id = 'SkillLudoEditBoxStyle';
-    style.textContent = '.cocosEditBox { box-sizing: border-box !important; margin: 0 !important; padding: 0 10px !important; line-height: 44px !important; overflow-y: hidden !important; } .cocosEditBox::-webkit-scrollbar { display: none; }';
+    // Creator anchors the real browser input at the bottom of the edit box.
+    // Let the browser use its normal centred single-line baseline; forcing a
+    // 44px line-height makes the caret sit lower than the canvas label.
+    style.textContent = 'input.cocosEditBox { box-sizing: border-box !important; margin: 0 !important; padding: 0 8px !important; min-height: 0 !important; line-height: normal !important; vertical-align: middle !important; overflow-y: hidden !important; } input.cocosEditBox::-webkit-scrollbar { display: none; }';
     document.head.appendChild(style);
   }
   private addLabel(parent: Node, name: string, text: string, position: Vec3, width: number, height: number, fontSize: number, color: Color): Label { const node = new Node(name); node.setParent(parent); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(width, height); node.setPosition(position); const label = node.addComponent(Label); label.fontSize = fontSize; label.lineHeight = fontSize + 6; label.color = color; label.string = text; label.horizontalAlign = Label.HorizontalAlign.CENTER; return label; }

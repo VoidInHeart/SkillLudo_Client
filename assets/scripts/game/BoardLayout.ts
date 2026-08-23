@@ -24,20 +24,24 @@ export class BoardLayout {
 
   public static piecePosition(color: PlayerColor, progress: number, state: string, stackIndex = 0): Vec3 {
     let base: Vec3;
-    if (state === 'AIRPORT') base = this.airportPosition(color, stackIndex);
+    // Completed planes return to their own airport, where the renderer swaps
+    // their normal plane silhouette for a coloured completion mark.
+    if (state === 'AIRPORT' || state === 'FINISHED') base = this.airportPosition(color, stackIndex);
     else if (progress >= FINAL_START) base = this.finalPathPosition(color, progress - FINAL_START);
     else base = this.mainPathPosition(color, progress);
-    if (state !== 'AIRPORT') base.add(new Vec3((stackIndex % 2) * 12 - 6, Math.floor(stackIndex / 2) * 12 - 6, 0));
+    if (state !== 'AIRPORT' && state !== 'FINISHED') base.add(new Vec3((stackIndex % 2) * 12 - 6, Math.floor(stackIndex / 2) * 12 - 6, 0));
     return base;
   }
 
   public static airportPosition(color: PlayerColor, index: number): Vec3 {
     const origin: Record<PlayerColor, Vec3> = {
       // Matches the four coloured airports in ludo-classic-board-cropped.png.
-      RED: new Vec3(245, -245), YELLOW: new Vec3(-245, 245),
-      BLUE: new Vec3(245, 245), GREEN: new Vec3(-245, -245)
+      RED: new Vec3(270, -270), YELLOW: new Vec3(-270, 270),
+      BLUE: new Vec3(270, 270), GREEN: new Vec3(-270, -270)
     };
-    const offset = new Vec3((index % 2) * 34 - 17, Math.floor(index / 2) * 34 - 17, 0);
+    // The texture's airport circles are a 60 × 60 grid. The previous 34 px
+    // spacing placed all four planes between circles instead of inside them.
+    const offset = new Vec3((index % 2) * 60 - 30, Math.floor(index / 2) * 60 - 30, 0);
     return origin[color].clone().add(offset);
   }
 

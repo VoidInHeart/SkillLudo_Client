@@ -23,6 +23,7 @@ export class GameController extends Component {
 
   private readonly network = new NetworkManager();
   private playerId = '';
+  private playerNickname = '';
   private sessionId = '';
   private snapshot: GameSnapshot | null = null;
   private pendingAccountAuthentication = false;
@@ -85,7 +86,11 @@ export class GameController extends Component {
     }
     this.send('START_GAME', { roomId: this.roomId });
   }
-  public onClickRollDice(): void { if (this.roomId) this.send('ROLL_DICE', { roomId: this.roomId }); }
+  public onClickRollDice(): void {
+    if (!this.roomId) return;
+    this.gameUI?.setDiceRequestPending();
+    this.send('ROLL_DICE', { roomId: this.roomId });
+  }
   /** Supports both generated-node events (piece id first) and Cocos Button custom data. */
   public onClickPiece(pieceOrEvent: unknown, customPieceId = ''): void {
     const pieceId = typeof pieceOrEvent === 'string' ? pieceOrEvent : customPieceId;
@@ -114,7 +119,8 @@ export class GameController extends Component {
       case 'QUICK_MATCH': this.send('QUICK_MATCH', {}); break;
       case 'READY': this.onClickReady(); break;
       case 'START_GAME': this.onClickStartGame(); break;
-      case 'CHAT': if (this.snapshot) this.gameUI?.showChatDialog(this.snapshot, this.playerId); break;
+      case 'CHAT':
+      case 'GAME_CHAT': if (this.snapshot) this.gameUI?.showChatDialog(this.snapshot, this.playerId); break;
       case 'LEAVE_ROOM': this.onClickLeaveRoom(); break;
       case 'ROLL_DICE': this.onClickRollDice(); break;
       default: break;
@@ -131,8 +137,9 @@ export class GameController extends Component {
     this.network.on('GAME_STATE', (message) => this.applySnapshot(message.data as GameSnapshot));
     this.network.on('ROOM_STATE', (message) => this.applySnapshot(message.data as GameSnapshot));
     this.network.on('DICE_RESULT', (message) => {
-      const data = message.data as { playerId: string; dice: number };
-      this.gameUI?.showStatus(`${data.playerId === this.playerId ? '你' : '其他玩家'} 掷出了 ${data.dice}`);
+      const data = message.data as { playerId: string; dice: number; skipped?: boolean };
+      this.gameUI?.playDiceRoll(data.dice);
+      this.gameUI?.showStatus(`${data.playerId === this.playerId ? '你' : '其他玩家'} 掷出了 ${data.dice}${data.skipped ? '，无棋可走' : ''}`);
     });
     this.network.on('MOVE_RESULT', (message) => {
       this.gameUI?.closeMoveConfirmation();
@@ -181,6 +188,7 @@ export class GameController extends Component {
   private handleAuth(message: ServerMessage): void {
     const data = message.data as { playerId: string; sessionId: string; nickname?: string };
     this.playerId = data.playerId;
+    this.playerNickname = data.nickname ?? this.playerNickname;
     this.sessionId = data.sessionId;
     sys.localStorage.setItem(PLAYER_KEY, data.playerId);
     if (this.pendingAccountAuthentication) {
@@ -188,10 +196,12 @@ export class GameController extends Component {
       if (this.pendingRememberLogin) this.writeAutoLoginSession(data.sessionId);
       else this.clearAutoLoginSession();
       this.pendingRememberLogin = false;
+      this.gameUI?.setAccountProfile({ playerId: data.playerId, nickname: this.playerNickname || '玩家' });
       this.gameUI?.showHome();
       this.gameUI?.showStatus('已连接到0号服务器');
     } else if (this.autoLoginRequested) {
       this.autoLoginRequested = false;
+      this.gameUI?.setAccountProfile({ playerId: data.playerId, nickname: this.playerNickname || '玩家' });
       this.gameUI?.showHome();
       this.gameUI?.showStatus('已连接到0号服务器');
     } else {
