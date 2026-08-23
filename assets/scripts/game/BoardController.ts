@@ -1,6 +1,6 @@
-import { _decorator, Canvas, Color, Component, Graphics, js, Label, Layers, Node, resources, Sprite, SpriteFrame, tween, UITransform, Vec3 } from 'cc';
+import { _decorator, Canvas, Color, Component, EventTouch, Graphics, js, Label, Layers, Node, resources, Sprite, SpriteFrame, tween, UITransform, Vec3 } from 'cc';
 import { BoardLayout } from './BoardLayout';
-import type { GameSnapshot, MoveResult, Piece, PieceState, PlayerColor } from '../protocol/GameProtocol';
+import type { BoardCalibrationData, BoardCalibrationOpen, GameSnapshot, MoveResult, Piece, PieceState, PlayerColor } from '../protocol/GameProtocol';
 
 const { ccclass, property } = _decorator;
 const pieceColors: Record<PlayerColor, Color> = {
@@ -33,6 +33,9 @@ export class BoardController extends Component {
   private selectedPieceId = '';
   private movablePieceIds = new Set<string>();
   private boardVisible = true;
+  private calibrationMarker: Node | null = null;
+  private calibrationConfirm: Node | null = null;
+  private calibrationTarget: BoardCalibrationOpen | null = null;
 
   public onLoad(): void {
     // Manually created children default to DEFAULT. Canvas only draws UI_2D by default.
@@ -49,6 +52,8 @@ export class BoardController extends Component {
     }
     this.renderSnapshot(snapshot);
   }
+
+  public applyCalibrationData(data: BoardCalibrationData): void { BoardLayout.setCalibrationData(data); }
 
   /** The lobby is a dedicated home screen; the board appears when a match starts. */
   public setBoardVisible(visible: boolean): void {
@@ -111,6 +116,34 @@ export class BoardController extends Component {
     this.setMovablePieces([...this.movablePieceIds]);
   }
 
+  /** Admin-only visual calibration uses one draggable black aircraft. */
+  public startCalibration(target: BoardCalibrationOpen): void {
+    this.calibrationTarget = target;
+    this.setBoardVisible(true);
+    const root = this.getRenderRoot();
+    if (!this.calibrationMarker?.isValid) {
+      const marker = new Node('BoardCalibrationMarker');
+      marker.setParent(root);
+      marker.layer = Layers.Enum.UI_2D;
+      marker.addComponent(UITransform).setContentSize(52, 52);
+      this.drawPlane(marker.addComponent(Graphics), new Color(25, 25, 28), false);
+      marker.on(Node.EventType.TOUCH_MOVE, (event: EventTouch) => this.moveCalibrationMarker(event));
+      marker.on(Node.EventType.TOUCH_END, () => this.showCalibrationConfirmation());
+      this.calibrationMarker = marker;
+    }
+    const stored = target.position ? new Vec3(target.position.x, target.position.y, 0) : BoardLayout.namedPosition(target.key);
+    this.calibrationMarker.setPosition(stored ?? Vec3.ZERO);
+    this.calibrationMarker.active = true;
+    this.calibrationMarker.setSiblingIndex(root.children.length - 1);
+    if (this.calibrationConfirm?.isValid) this.calibrationConfirm.active = false;
+  }
+
+  public stopCalibration(): void {
+    this.calibrationTarget = null;
+    if (this.calibrationMarker?.isValid) this.calibrationMarker.active = false;
+    if (this.calibrationConfirm?.isValid) this.calibrationConfirm.active = false;
+  }
+
   private renderSnapshot(snapshot: GameSnapshot): void {
     if (this.selectedPieceId && (snapshot.phase !== 'WAIT_SELECT_PIECE' || snapshot.movablePieceIds.indexOf(this.selectedPieceId) < 0)) this.clearMovePreview();
     this.pieces.clear();
@@ -159,7 +192,9 @@ export class BoardController extends Component {
     node.addComponent(UITransform).setContentSize(38, 38);
     const graphics = node.addComponent(Graphics);
     this.drawPlane(graphics, pieceColors[piece.color], piece.state === 'FINISHED');
-    if (!this.previewPieceColors.has(piece.id)) node.on(Node.EventType.TOUCH_END, () => root.emit('piece-selected', piece.id));
+    // renderRoot is a Canvas child, not a child of this controller node. Emit
+    // from the controller so GameController's listener receives plane taps.
+    if (!this.previewPieceColors.has(piece.id)) node.on(Node.EventType.TOUCH_END, () => this.node.emit('piece-selected', piece.id));
     this.pieceNodes.set(piece.id, node);
     return node;
   }
@@ -223,6 +258,88 @@ export class BoardController extends Component {
       graphics.stroke();
     }
     glow.active = active;
+  }
+
+  private moveCalibrationMarker(event: EventTouch): void {
+    if (!this.calibrationMarker?.isValid) return;
+    const location = event.getUILocation();
+    const transform = this.getRenderRoot().getComponent(UITransform);
+    const local = transform?.convertToNodeSpaceAR(new Vec3(location.x, location.y, 0));
+    if (!local) return;
+    this.calibrationMarker.setPosition(
+      Math.max(-350, Math.min(350, local.x)),
+      Math.max(-350, Math.min(350, local.y)),
+      0
+    );
+    if (this.calibrationConfirm?.isValid) this.calibrationConfirm.active = false;
+  }
+
+  private showCalibrationConfirmation(): void {
+    const marker = this.calibrationMarker;
+    const target = this.calibrationTarget;
+    if (!marker?.isValid || !target) return;
+    const root = this.getRenderRoot();
+    if (this.calibrationConfirm?.isValid) this.calibrationConfirm.destroy();
+    const panel = new Node('CalibrationConfirm');
+    panel.setParent(root);
+    panel.layer = Layers.Enum.UI_2D;
+    panel.addComponent(UITransform).setContentSize(196, 82);
+    const x = Math.max(-250, Math.min(250, marker.position.x + 108));
+    const y = Math.max(-305, Math.min(305, marker.position.y + 58));
+    panel.setPosition(x, y, 0);
+    const graphics = panel.addComponent(Graphics);
+    graphics.fillColor = new Color(255, 244, 192, 250);
+    graphics.roundRect(-98, -41, 196, 82, 8);
+    graphics.fill();
+    graphics.strokeColor = new Color(48, 48, 48, 255);
+    graphics.lineWidth = 1.5;
+    graphics.roundRect(-98, -41, 196, 82, 8);
+    graphics.stroke();
+    this.addCalibrationLabel(panel, 'ConfirmText', `确认 ${target.key}\n(${marker.position.x.toFixed(1)}, ${marker.position.y.toFixed(1)})`, new Vec3(0, 17), 184, 38, 14);
+    const cancel = this.addCalibrationButton(panel, '重摆', new Vec3(-45, -23), new Color(112, 120, 132));
+    cancel.on(Node.EventType.TOUCH_END, () => { panel.active = false; });
+    const confirm = this.addCalibrationButton(panel, '确认', new Vec3(45, -23), new Color(45, 135, 79));
+    confirm.on(Node.EventType.TOUCH_END, () => {
+      panel.active = false;
+      this.node.emit('calibration-save', {
+        key: target.key,
+        x: marker.position.x,
+        y: marker.position.y,
+        single: target.single
+      });
+    });
+    panel.setSiblingIndex(root.children.length - 1);
+    this.calibrationConfirm = panel;
+  }
+
+  private addCalibrationButton(parent: Node, title: string, position: Vec3, color: Color): Node {
+    const node = new Node(`${title}CalibrationButton`);
+    node.setParent(parent);
+    node.layer = Layers.Enum.UI_2D;
+    node.addComponent(UITransform).setContentSize(72, 28);
+    node.setPosition(position);
+    const graphics = node.addComponent(Graphics);
+    graphics.fillColor = color;
+    graphics.roundRect(-36, -14, 72, 28, 5);
+    graphics.fill();
+    this.addCalibrationLabel(node, 'Text', title, Vec3.ZERO, 68, 24, 13, Color.WHITE);
+    return node;
+  }
+
+  private addCalibrationLabel(parent: Node, name: string, value: string, position: Vec3, width: number, height: number, fontSize: number, color = new Color(28, 28, 28)): Label {
+    const node = new Node(name);
+    node.setParent(parent);
+    node.layer = Layers.Enum.UI_2D;
+    node.addComponent(UITransform).setContentSize(width, height);
+    node.setPosition(position);
+    const label = node.addComponent(Label);
+    label.string = value;
+    label.fontSize = fontSize;
+    label.lineHeight = fontSize + 3;
+    label.color = color;
+    label.horizontalAlign = Label.HorizontalAlign.CENTER;
+    label.verticalAlign = Label.VerticalAlign.CENTER;
+    return label;
   }
 
   private showMoveTarget(position: Vec3, color: Color): void {

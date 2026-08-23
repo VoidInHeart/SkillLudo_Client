@@ -1,8 +1,10 @@
 import { _decorator, Button, Canvas, Color, Component, EditBox, Graphics, js, Label, Layers, Node, tween, UITransform, Vec3, view } from 'cc';
 import type { ChatEntry, GameSnapshot, PlayerColor, PlayerPublicState } from '../protocol/GameProtocol';
+import type { BoardCalibrationOpen } from '../protocol/GameProtocol';
 
 const { ccclass, property } = _decorator;
 type Screen = 'HOME' | 'AUTH' | 'ROOM' | 'GAME';
+const DEBUG_DICE_CODE = 'LUDO-TEST-2026';
 
 export interface MoveConfirmation { color: PlayerColor; dice: number; description: string; }
 export interface AccountActionData { username: string; password: string; nickname: string; rememberMe: boolean; }
@@ -39,6 +41,10 @@ export class GameUI extends Component {
   private roomPlayersLabel: Label | null = null;
   private roomNoticeLabel: Label | null = null;
   private diceGraphics: Graphics | null = null;
+  private localColorLabel: Label | null = null;
+  private calibrationLabel: Label | null = null;
+  private isAdmin = false;
+  private debugDiceEnabled = false;
   private diceRolling = false;
   private diceRollToken = 0;
   private displayedDice = 1;
@@ -53,6 +59,7 @@ export class GameUI extends Component {
   private currentScreen: Screen = 'HOME';
   private roomOwnerId = '';
   private localPlayerId = '';
+  private readonly playerColors = new Map<string, PlayerColor>();
 
   public onLoad(): void {
     this.node.layer = Layers.Enum.UI_2D;
@@ -62,6 +69,15 @@ export class GameUI extends Component {
   }
 
   public showHome(): void { this.setScreen('HOME'); }
+  public setAdmin(isAdmin: boolean): void {
+    this.isAdmin = isAdmin;
+    this.setActionVisible('CALIBRATE', this.currentScreen === 'GAME' && isAdmin);
+  }
+  public showCalibrationStatus(target: BoardCalibrationOpen | null): void {
+    if (!this.calibrationLabel) return;
+    this.calibrationLabel.string = target ? `校准 ${target.index}/${target.total}：${target.key}` : '';
+    this.calibrationLabel.node.active = !!target;
+  }
   /** Updated after an account session is authenticated. The side drawer is intentionally
    * local-account based for now, leaving a stable place to attach a WeChat avatar later. */
   public setAccountProfile(profile: AccountProfile): void {
@@ -73,14 +89,18 @@ export class GameUI extends Component {
 
   public render(snapshot: GameSnapshot, localPlayerId: string): void {
     this.localPlayerId = localPlayerId;
+    this.updatePlayerColors(snapshot.players);
     if (snapshot.roomStatus === 'WAITING') {
       this.renderRoom(snapshot, localPlayerId);
       return;
     }
     this.setScreen('GAME');
     const myTurn = snapshot.currentPlayerId === localPlayerId;
-    this.setText(this.roomLabel, `房间号：${snapshot.roomId}（第 ${snapshot.turnNumber} 回合）`);
-    this.setText(this.playersLabel, snapshot.players.map((player) => this.playerLine(player)).join('\n'));
+    const localPlayer = snapshot.players.find((player) => player.id === localPlayerId);
+    this.setText(this.roomLabel, `房间号：${snapshot.roomId}\n第 ${snapshot.turnNumber} 回合`);
+    this.setText(this.localColorLabel, `本局你的颜色：${localPlayer ? this.colorName(localPlayer.color) : '未分配'}`);
+    if (localPlayer && this.localColorLabel) this.localColorLabel.color = this.playerNameColor(localPlayer.color);
+    this.setText(this.playersLabel, snapshot.players.map((player) => `${this.colorIcon(player.color)} ${this.colorName(player.color)}：${player.nickname}${player.isBot ? '（AI）' : ''}`).join('\n'));
     if (!this.diceRolling) {
       this.displayedDice = snapshot.dice ?? this.displayedDice;
       this.setText(this.diceLabel, snapshot.dice ? `骰子：${snapshot.dice}` : '骰子：等待投掷');
@@ -187,7 +207,7 @@ export class GameUI extends Component {
     this.closeChatDialog();
     const modal = this.createModalRoot('RoomChatModal');
     const card = this.createCard(modal, 'ChatCard', 660, 560, new Color(255, 255, 255), new Color(58, 119, 203));
-    this.addLabel(card, 'ChatTitle', '房间交流', new Vec3(0, 235, 0), 400, 34, 25, new Color(24, 70, 137));
+    this.addLabel(card, 'ChatTitle', '聊天', new Vec3(0, 235, 0), 400, 34, 25, new Color(24, 70, 137));
     const targetLabel = this.addLabel(card, 'ChatTarget', '发送至：房间广播', new Vec3(0, 190, 0), 520, 28, 17, new Color(74, 94, 120));
     let recipientId = '';
     this.createModalButton(card, '广播', new Vec3(-245, 150, 0), new Color(40, 117, 214), () => { recipientId = ''; targetLabel.string = '发送至：房间广播'; }, 92, 36, 14);
@@ -209,6 +229,48 @@ export class GameUI extends Component {
     this.chatModal = null; this.chatLinesRoot = null; this.chatLineNodes = [];
   }
 
+  /** Local-development helper. The server independently rejects forced dice in production. */
+  public showDebugDiceDialog(): void {
+    if (!this.debugDiceEnabled) {
+      this.showDebugCodeDialog();
+      return;
+    }
+    const modal = this.createModalRoot('DebugDiceModal');
+    const card = this.createCard(modal, 'DebugDiceCard', 420, 290, new Color(255, 255, 255), new Color(203, 145, 48));
+    this.addLabel(card, 'DebugDiceTitle', '指定投骰点数', new Vec3(0, 102, 0), 340, 34, 24, new Color(121, 78, 19));
+    this.addLabel(card, 'DebugDiceHint', '仅用于本机开发调试', new Vec3(0, 64, 0), 340, 26, 15, new Color(122, 104, 73));
+    for (let value = 1; value <= 6; value += 1) {
+      const index = value - 1;
+      const x = -108 + (index % 3) * 108;
+      const y = 12 - Math.floor(index / 3) * 64;
+      this.createModalButton(card, String(value), new Vec3(x, y, 0), new Color(202, 137, 35), () => {
+        modal.destroy();
+        this.node.emit('debug-roll', value);
+      }, 76, 46, 20);
+    }
+    this.createModalButton(card, '关闭', new Vec3(0, -112, 0), new Color(126, 139, 158), () => modal.destroy(), 104, 34, 14);
+  }
+
+  private showDebugCodeDialog(): void {
+    const modal = this.createModalRoot('DebugCodeModal');
+    const card = this.createCard(modal, 'DebugCodeCard', 440, 265, new Color(255, 255, 255), new Color(203, 145, 48));
+    this.addLabel(card, 'DebugCodeTitle', '输入调试口令', new Vec3(0, 82, 0), 360, 34, 24, new Color(121, 78, 19));
+    const notice = this.addLabel(card, 'DebugCodeNotice', '验证后可自定义本次骰子点数', new Vec3(0, 44, 0), 370, 26, 16, new Color(95, 117, 151));
+    const input = this.createTextInput(card, 'DebugCodeInput', new Vec3(0, -5, 0), 300, '输入调试口令');
+    this.createModalButton(card, '取消', new Vec3(-94, -84, 0), new Color(121, 139, 164), () => modal.destroy(), 118, 42, 16);
+    this.createModalButton(card, '验证', new Vec3(94, -84, 0), new Color(202, 137, 35), () => {
+      if (input.string.trim().toUpperCase() !== DEBUG_DICE_CODE) {
+        notice.string = '口令不正确，请重试';
+        return;
+      }
+      this.debugDiceEnabled = true;
+      this.updateDebugDiceButton();
+      modal.destroy();
+      this.showStatus('已启用指定点数调试');
+      this.showDebugDiceDialog();
+    }, 118, 42, 16);
+  }
+
   /** Second-step confirmation protects against accidental plane clicks. */
   public showMoveConfirmation(preview: MoveConfirmation, onConfirm: () => void, onCancel: () => void): void {
     this.closeMoveConfirmation();
@@ -225,14 +287,16 @@ export class GameUI extends Component {
 
   private renderRoom(snapshot: GameSnapshot, localPlayerId: string): void {
     this.setScreen('ROOM');
+    this.updatePlayerColors(snapshot.players);
     this.roomOwnerId = snapshot.ownerId;
     this.setText(this.roomTitleLabel, `房间 ${snapshot.roomId}`);
     const isOwner = snapshot.ownerId === localPlayerId;
     const canStart = isOwner && snapshot.players.length >= 2 && snapshot.players.every((player) => player.ready);
-    this.setText(this.roomPlayersLabel, snapshot.players.map((player, index) => `${index + 1}. ${this.colorIcon(player.color)} ${player.nickname}${player.id === snapshot.ownerId ? ' · 房主' : ''}　${player.ready ? '已准备' : '等待准备'}　${player.connected ? '在线' : '重连中'}`).join('\n'));
+    this.setText(this.roomPlayersLabel, snapshot.players.map((player, index) => `${index + 1}. ${this.colorIcon(player.color)} ${player.nickname}${player.isBot ? ' · AI' : ''}${player.id === snapshot.ownerId ? ' · 房主' : ''}　${player.ready ? '已准备' : '等待准备'}　${player.connected ? '在线' : '重连中'}`).join('\n'));
     this.setText(this.roomNoticeLabel, isOwner ? (canStart ? '全部准备完成，可以开始对局' : '等待至少一位玩家加入并全部准备') : '等待房主开始对局');
     if (this.readyButton) this.readyButton.interactable = !!snapshot.players.find((player) => player.id === localPlayerId);
     if (this.startButton) this.startButton.interactable = canStart;
+    this.updateStartButtonAppearance(canStart);
   }
 
   private setScreen(screen: Screen): void {
@@ -246,13 +310,17 @@ export class GameUI extends Component {
     ['READY', 'START_GAME', 'CHAT', 'LEAVE_ROOM'].forEach((action) => this.setActionVisible(action, room));
     this.setActionVisible('GAME_CHAT', game);
     this.setActionVisible('ROLL_DICE', game);
+    this.setActionVisible('DEBUG_DICE', game);
+    this.setActionVisible('CALIBRATE', game && this.isAdmin);
     if (this.statusLabel) this.statusLabel.node.active = game;
     if (this.homeConnectionLabel) this.homeConnectionLabel.node.active = home;
     if (this.roomLabel) this.roomLabel.node.active = game;
+    if (this.localColorLabel) this.localColorLabel.node.active = game;
     if (this.playersLabel) this.playersLabel.node.active = game;
     if (this.diceLabel) this.diceLabel.node.active = game;
     if (this.diceGraphics) this.diceGraphics.node.active = game;
     if (this.rankingsLabel) this.rankingsLabel.node.active = game;
+    if (this.calibrationLabel) this.calibrationLabel.node.active = game && !!this.calibrationLabel.string;
     if (this.statusLabel) this.statusLabel.color = new Color(232, 243, 255);
   }
 
@@ -265,12 +333,19 @@ export class GameUI extends Component {
     const home = this.getHomeLayout(size);
     const room = this.getRoomLayout(size);
     this.createHomeVisual(size); this.createAuthVisual(size); this.createRoomVisual(size);
-    this.statusLabel = this.addLabel(this.getRuntimeRoot(), 'Status', '', new Vec3(0, -size.height / 2 + (compact ? 53 : 42), 0), 720, 34, 19, new Color(232, 243, 255));
-    this.roomLabel = this.addLabel(this.getRuntimeRoot(), 'GameRoom', '', new Vec3(0, size.height / 2 - 70, 0), 620, 28, 19, new Color(18, 58, 108));
-    this.playersLabel = this.addLabel(this.getRuntimeRoot(), 'GamePlayers', '', new Vec3(-size.width / 2 + 135, size.height / 2 - 135, 0), 250, 130, 16, new Color(31, 53, 85));
-    this.diceLabel = this.addLabel(this.getRuntimeRoot(), 'Dice', '', new Vec3(size.width / 2 - 120, size.height / 2 - 120, 0), 170, 30, 19, new Color(31, 53, 85));
-    this.createDice(new Vec3(size.width / 2 - 120, size.height / 2 - 185, 0));
-    this.rankingsLabel = this.addLabel(this.getRuntimeRoot(), 'Rankings', '', new Vec3(0, -size.height / 2 + 120, 0), 600, 30, 17, new Color(31, 53, 85));
+    // Game-only information is kept in a single right-side HUD.  This keeps
+    // the board unobstructed while putting room, colour and turn information
+    // immediately above the die as requested.
+    const gameHudX = size.width / 2 - 116;
+    const hudText = new Color(230, 241, 255);
+    this.roomLabel = this.addLabel(this.getRuntimeRoot(), 'GameRoom', '', new Vec3(gameHudX, size.height / 2 - 52, 0), 246, 48, 17, hudText);
+    this.localColorLabel = this.addLabel(this.getRuntimeRoot(), 'LocalColor', '', new Vec3(gameHudX, size.height / 2 - 100, 0), 246, 28, 16, hudText);
+    this.playersLabel = this.addLabel(this.getRuntimeRoot(), 'GamePlayers', '', new Vec3(gameHudX, size.height / 2 - 176, 0), 280, 108, 15, hudText);
+    this.diceLabel = this.addLabel(this.getRuntimeRoot(), 'Dice', '', new Vec3(gameHudX, 57, 0), 220, 30, 18, hudText);
+    this.createDice(new Vec3(gameHudX, -16, 0));
+    this.statusLabel = this.addLabel(this.getRuntimeRoot(), 'Status', '', new Vec3(gameHudX, -88, 0), 280, 34, 17, hudText);
+    this.rankingsLabel = this.addLabel(this.getRuntimeRoot(), 'Rankings', '', new Vec3(gameHudX, -124, 0), 280, 30, 15, hudText);
+    this.calibrationLabel = this.addLabel(this.getRuntimeRoot(), 'CalibrationStatus', '', new Vec3(gameHudX, -184, 0), 286, 28, 14, new Color(255, 226, 111));
     this.createActionButton('快速匹配', 'QUICK_MATCH', new Vec3(0, home.quickY, 0), true, new Color(35, 145, 92), home.quickWidth, home.buttonHeight, home.buttonFont);
     this.createActionButton('创建房间', 'CREATE_ROOM', new Vec3(-home.columnX, home.actionY, 0), true, new Color(40, 117, 214), home.buttonWidth, home.buttonHeight, home.buttonFont);
     this.createActionButton('加入房间', 'JOIN_ROOM', new Vec3(home.columnX, home.actionY, 0), true, new Color(56, 117, 198), home.buttonWidth, home.buttonHeight, home.buttonFont);
@@ -279,8 +354,10 @@ export class GameUI extends Component {
     // Keep the two room-action rows on the exact same two-column grid.
     this.createActionButton('聊天', 'CHAT', new Vec3(-room.columnX, room.secondRowY, 0), true, new Color(120, 91, 177), room.buttonWidth, room.buttonHeight, room.buttonFont);
     this.createActionButton('离开房间', 'LEAVE_ROOM', new Vec3(room.columnX, room.secondRowY, 0), true, new Color(135, 83, 86), room.buttonWidth, room.buttonHeight, room.buttonFont);
-    this.createActionButton('聊天', 'GAME_CHAT', new Vec3(size.width / 2 - 95, -size.height / 2 + 126, 0), true, new Color(120, 91, 177), 150, 48, 18);
-    this.rollButton = this.createActionButton('投骰子', 'ROLL_DICE', new Vec3(size.width / 2 - 95, -size.height / 2 + 58, 0), false);
+    this.createActionButton('聊天', 'GAME_CHAT', new Vec3(gameHudX, -size.height / 2 + (compact ? 100 : 106), 0), true, new Color(120, 91, 177), 150, 44, 17);
+    this.rollButton = this.createActionButton('投骰子', 'ROLL_DICE', new Vec3(gameHudX, -size.height / 2 + (compact ? 46 : 50), 0), false, new Color(40, 117, 214), 150, 44, 17);
+    this.createActionButton('调试', 'DEBUG_DICE', new Vec3(gameHudX - 52, -148, 0), true, new Color(178, 122, 38), 92, 30, 14);
+    this.createActionButton('校准', 'CALIBRATE', new Vec3(gameHudX + 52, -148, 0), true, new Color(52, 62, 78), 92, 30, 14);
     this.showStatus('连接游戏服务器中…');
   }
 
@@ -512,9 +589,20 @@ export class GameUI extends Component {
     const node = new Node(`${action}Button`); node.setParent(this.getRuntimeRoot()); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(width, height); node.setPosition(position);
     const graphics = node.addComponent(Graphics); graphics.fillColor = color; graphics.roundRect(-width / 2, -height / 2, width, height, 12); graphics.fill(); this.addLabel(node, `${action}Text`, title, Vec3.ZERO, width - 10, height - 8, fontSize, Color.WHITE);
     const button = node.addComponent(Button); button.interactable = enabled;
-    node.on(Node.EventType.TOUCH_END, () => { if (button.interactable) this.node.emit('ui-action', action); else if (action === 'START_GAME' && this.currentScreen === 'ROOM' && this.roomOwnerId !== this.localPlayerId) this.showTooltip('非房主无法开始对局', node); });
-    if (action === 'START_GAME') { node.on(Node.EventType.MOUSE_ENTER, () => { if (!button.interactable && this.currentScreen === 'ROOM' && this.roomOwnerId !== this.localPlayerId) this.showTooltip('非房主无法开始对局', node); }); node.on(Node.EventType.MOUSE_LEAVE, () => this.hideTooltip()); }
+    node.on(Node.EventType.TOUCH_END, () => { if (button.interactable) this.node.emit('ui-action', action); });
+    if (action === 'START_GAME') {
+      const showOwnerHint = (event?: unknown): void => {
+        if (!button.interactable && this.currentScreen === 'ROOM' && this.roomOwnerId !== this.localPlayerId) this.showTooltipAtPointer('非房主无法开始对局', event, node);
+      };
+      node.on(Node.EventType.MOUSE_ENTER, showOwnerHint);
+      node.on(Node.EventType.MOUSE_MOVE, showOwnerHint);
+      node.on(Node.EventType.MOUSE_LEAVE, () => this.hideTooltip());
+    }
     this.actionButtons.set(action, button); return button;
+  }
+  private updateDebugDiceButton(): void {
+    const label = this.actionButtons.get('DEBUG_DICE')?.node.getChildByName('DEBUG_DICEText')?.getComponent(Label);
+    if (label) label.string = this.debugDiceEnabled ? '指定点数' : '调试';
   }
   /** Text-like tabs keep the account page light while remaining easy to click. */
   private createAuthTab(parent: Node, mode: 'LOGIN' | 'REGISTER', title: string, position: Vec3): void {
@@ -589,7 +677,25 @@ export class GameUI extends Component {
     input.inputMode = EditBox.InputMode.SINGLE_LINE;
     input.inputFlag = password ? EditBox.InputFlag.PASSWORD : EditBox.InputFlag.DEFAULT;
     node.active = true;
+
+    // The focused state is a browser input, whereas the unfocused state is a
+    // Cocos Label. Cocos lays that label out again after blur, so set a fixed
+    // baseline both after activation and after editing ends.
+    const alignDisplayLabels = () => {
+      this.alignEditBoxLabel(label, width);
+      this.alignEditBoxLabel(hint, width);
+    };
+    this.scheduleOnce(alignDisplayLabels);
+    input.node.on(EditBox.EventType.EDITING_DID_ENDED, alignDisplayLabels);
     return input;
+  }
+
+  private alignEditBoxLabel(label: Label, width: number): void {
+    const labelNode = label.node;
+    if (!labelNode?.isValid) return;
+    // Cocos defaults to (-width / 2 + 2, 22). Match the DOM input's left
+    // padding and preserve the settled 10 px downward Canvas baseline.
+    labelNode.setPosition(-width / 2 + 8, 12, labelNode.position.z);
   }
   private installWebInputStyle(): void {
     if (typeof document === 'undefined' || document.getElementById('SkillLudoEditBoxStyle')) return;
@@ -604,33 +710,107 @@ export class GameUI extends Component {
   private renderChatEntries(): void {
     if (!this.chatLinesRoot?.isValid) return;
     this.chatLineNodes.forEach((node) => node.destroy()); this.chatLineNodes = [];
-    this.chatEntries.slice(-8).forEach((entry, index) => {
+    let y = 112;
+    this.chatEntries.slice(-6).forEach((entry, index) => {
       const system = entry.kind === 'SYSTEM';
       const ownMessage = !system && entry.senderId === this.localPlayerId;
       const privateMessage = entry.kind === 'PRIVATE';
-      const prefix = system
-        ? `── ${entry.content} ──`
-        : privateMessage && ownMessage
-          ? `[私信给 ${entry.recipientNickname ?? '玩家'}] ${entry.content}`
-          : privateMessage
-            ? `[私信] ${entry.senderNickname ?? '玩家'}：${entry.content}`
-            : ownMessage
-              ? `我：${entry.content}`
-              : `${entry.senderNickname ?? '玩家'}：${entry.content}`;
-      const color = system ? new Color(224, 68, 68) : ownMessage ? new Color(35, 104, 192) : privateMessage ? new Color(121, 78, 170) : new Color(45, 61, 86);
-      const label = this.addLabel(this.chatLinesRoot!, `ChatLine${index}`, prefix, new Vec3(0, 112 - index * 31, 0), 550, 28, 16, color);
-      // Label defaults to auto-width. A fixed line box is required before left
-      // and right alignment can have a visible effect.
-      label.overflow = Label.Overflow.CLAMP;
-      label.horizontalAlign = system ? Label.HorizontalAlign.CENTER : ownMessage ? Label.HorizontalAlign.RIGHT : Label.HorizontalAlign.LEFT;
-      this.chatLineNodes.push(label.node);
+      if (system) {
+        const systemLabel = this.addLabel(this.chatLinesRoot!, `ChatSystem${index}`, `── ${entry.content} ──`, new Vec3(0, y, 0), 550, 28, 16, new Color(224, 68, 68));
+        systemLabel.overflow = Label.Overflow.CLAMP;
+        this.chatLineNodes.push(systemLabel.node);
+        y -= 34;
+        return;
+      }
+
+      const line = new Node(`ChatLine${index}`);
+      line.setParent(this.chatLinesRoot!);
+      line.layer = Layers.Enum.UI_2D;
+      line.addComponent(UITransform).setContentSize(550, 42);
+      line.setPosition(0, y - 2, 0);
+      const align = ownMessage ? Label.HorizontalAlign.RIGHT : Label.HorizontalAlign.LEFT;
+      const peer = ownMessage ? entry.recipientNickname : entry.senderNickname;
+      const privateTag = privateMessage ? (ownMessage ? ` · 私信给 ${peer ?? '玩家'}` : ' · 私信') : '';
+      const nickname = ownMessage ? `我${privateTag}` : `${entry.senderNickname ?? '玩家'}${privateTag}`;
+      const nicknameColor = this.playerNameColor(ownMessage ? this.playerColors.get(this.localPlayerId) : this.playerColors.get(entry.senderId ?? ''));
+      const senderLabel = this.addLabel(line, 'Nickname', nickname, new Vec3(0, 10, 0), 530, 20, 13, nicknameColor);
+      senderLabel.horizontalAlign = align;
+      senderLabel.overflow = Label.Overflow.CLAMP;
+      // Only the nickname is coloured. The actual chat content deliberately
+      // remains one neutral colour for legibility, including private messages.
+      const contentLabel = this.addLabel(line, 'Content', entry.content, new Vec3(0, -10, 0), 530, 22, 16, new Color(45, 61, 86));
+      contentLabel.horizontalAlign = align;
+      contentLabel.overflow = Label.Overflow.CLAMP;
+      this.chatLineNodes.push(line);
+      y -= 46;
     });
   }
   private setActionVisible(action: string, active: boolean): void { const button = this.actionButtons.get(action); if (button) button.node.active = active; }
-  private showTooltip(text: string, anchor: Node): void { this.hideTooltip(); const label = this.addLabel(this.getRuntimeRoot(), 'StartOwnerTooltip', text, anchor.position.clone().add(new Vec3(0, 46, 0)), 240, 30, 16, new Color(255, 237, 237)); label.node.setSiblingIndex(this.getRuntimeRoot().children.length - 1); }
-  private hideTooltip(): void { const tooltip = this.getRuntimeRoot().getChildByName('StartOwnerTooltip'); if (tooltip) tooltip.destroy(); }
+  private updateStartButtonAppearance(enabled: boolean): void {
+    const button = this.startButton;
+    if (!button) return;
+    const node = button.node;
+    const transform = node.getComponent(UITransform);
+    const graphics = node.getComponent(Graphics);
+    const label = node.getChildByName('START_GAMEText')?.getComponent(Label);
+    if (!transform || !graphics) return;
+    const width = transform.width;
+    const height = transform.height;
+    graphics.clear();
+    graphics.fillColor = enabled ? new Color(35, 145, 92) : new Color(155, 163, 174);
+    graphics.roundRect(-width / 2, -height / 2, width, height, 12);
+    graphics.fill();
+    if (label) label.color = enabled ? Color.WHITE : new Color(238, 241, 245);
+  }
+  private showTooltipAtPointer(text: string, event: unknown, anchor: Node): void {
+    const root = this.getRuntimeRoot();
+    const existing = root.children.filter((child) => child.name === 'StartOwnerTooltip' && child.isValid);
+    let tooltip = existing.shift();
+    existing.forEach((duplicate) => duplicate.destroy());
+    if (!tooltip) {
+      tooltip = new Node('StartOwnerTooltip');
+      tooltip.setParent(root);
+      tooltip.layer = Layers.Enum.UI_2D;
+      tooltip.addComponent(UITransform).setContentSize(224, 30);
+      const graphics = tooltip.addComponent(Graphics);
+      graphics.fillColor = new Color(255, 226, 111, 255);
+      graphics.roundRect(-112, -15, 224, 30, 5);
+      graphics.fill();
+      graphics.strokeColor = new Color(134, 99, 20, 255);
+      graphics.lineWidth = 1;
+      graphics.roundRect(-112, -15, 224, 30, 5);
+      graphics.stroke();
+      const label = this.addLabel(tooltip, 'TooltipText', text, Vec3.ZERO, 212, 26, 14, new Color(28, 28, 28));
+      label.verticalAlign = Label.VerticalAlign.CENTER;
+    }
+    tooltip.active = true;
+    const label = tooltip.getChildByName('TooltipText')?.getComponent(Label);
+    if (label) label.string = text;
+    const pointer = event as { getUILocation?: () => { x: number; y: number } } | undefined;
+    const location = pointer?.getUILocation?.();
+    const size = view.getVisibleSize();
+    const fallback = anchor.position.clone().add(new Vec3(0, 46, 0));
+    const x = location ? location.x - size.width / 2 + 112 : fallback.x;
+    const y = location ? location.y - size.height / 2 + 28 : fallback.y;
+    tooltip.setPosition(Math.max(-size.width / 2 + 118, Math.min(size.width / 2 - 118, x)), Math.max(-size.height / 2 + 22, Math.min(size.height / 2 - 22, y)), 0);
+    tooltip.setSiblingIndex(root.children.length - 1);
+  }
+  private hideTooltip(): void {
+    const tooltips = this.getRuntimeRoot().children.filter((child) => child.name === 'StartOwnerTooltip' && child.isValid);
+    tooltips.forEach((tooltip, index) => { if (index === 0) tooltip.active = false; else tooltip.destroy(); });
+  }
   private drawCloud(graphics: Graphics, x: number, y: number, scale: number): void { graphics.fillColor = new Color(255, 255, 255, 34); graphics.circle(x - 42 * scale, y, 24 * scale); graphics.circle(x - 5 * scale, y + 12 * scale, 34 * scale); graphics.circle(x + 35 * scale, y, 26 * scale); graphics.fill(); }
-  private playerLine(player: PlayerPublicState): string { return `${this.colorIcon(player.color)} ${player.nickname}　${player.ready ? '已准备' : '未准备'}　${player.connected ? '在线' : '重连中'}`; }
+  private updatePlayerColors(players: PlayerPublicState[]): void {
+    this.playerColors.clear();
+    players.forEach((player) => this.playerColors.set(player.id, player.color));
+    this.renderChatEntries();
+  }
+  private colorName(color: PlayerColor): string { return ({ RED: '红色', YELLOW: '黄色', BLUE: '蓝色', GREEN: '绿色' } as Record<PlayerColor, string>)[color]; }
+  private playerNameColor(color: PlayerColor | undefined): Color {
+    // Red nicknames use orange rather than red to preserve contrast on white.
+    return ({ RED: new Color(232, 125, 43), YELLOW: new Color(189, 143, 25), BLUE: new Color(43, 113, 210), GREEN: new Color(37, 144, 83) } as Record<PlayerColor, Color>)[color ?? 'BLUE'];
+  }
+  private playerLine(player: PlayerPublicState): string { return `${this.colorIcon(player.color)} ${player.nickname}${player.isBot ? ' · AI' : ''}　${player.ready ? '已准备' : '未准备'}　${player.connected ? '在线' : '重连中'}`; }
   private statusFor(snapshot: GameSnapshot, myTurn: boolean): string { if (snapshot.phase === 'GAME_OVER') return '本局结束'; if (myTurn && snapshot.phase === 'WAIT_ROLL') return '轮到你投骰子'; if (myTurn && snapshot.phase === 'WAIT_SELECT_PIECE') return '请选择高亮飞机'; const current = snapshot.players.find((player) => player.id === snapshot.currentPlayerId)?.nickname ?? '玩家'; return `等待 ${current} 操作`; }
   private colorIcon(color: string): string { return ({ RED: '🔴', YELLOW: '🟡', BLUE: '🔵', GREEN: '🟢' } as Record<string, string>)[color] ?? '⚪'; }
   private setText(label: Label | null, value: string): void { if (label) label.string = value; }

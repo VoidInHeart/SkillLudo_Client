@@ -1,7 +1,7 @@
 import { _decorator, Component, js, sys } from 'cc';
 import { BoardController } from './BoardController';
 import { NetworkManager } from '../network/NetworkManager';
-import type { ChatEntry, ErrorPayload, GameSnapshot, MoveResult, ServerMessage } from '../protocol/GameProtocol';
+import type { BoardCalibrationData, BoardCalibrationOpen, ChatEntry, ErrorPayload, GameSnapshot, MoveResult, ServerMessage } from '../protocol/GameProtocol';
 import { GameUI, type AccountActionData } from '../ui/GameUI';
 
 const { ccclass, property } = _decorator;
@@ -41,6 +41,8 @@ export class GameController extends Component {
     this.gameUI?.node.on('join-room', this.onClickJoinRoom, this);
     this.gameUI?.node.on('account-action', this.handleAccountAction, this);
     this.gameUI?.node.on('chat-send', this.handleChatSend, this);
+    this.gameUI?.node.on('debug-roll', this.handleDebugRoll, this);
+    this.boardController?.node.on('calibration-save', this.handleCalibrationSave, this);
     this.bindNetworkEvents();
   }
 
@@ -57,6 +59,8 @@ export class GameController extends Component {
     this.gameUI?.node.off('join-room', this.onClickJoinRoom, this);
     this.gameUI?.node.off('account-action', this.handleAccountAction, this);
     this.gameUI?.node.off('chat-send', this.handleChatSend, this);
+    this.gameUI?.node.off('debug-roll', this.handleDebugRoll, this);
+    this.boardController?.node.off('calibration-save', this.handleCalibrationSave, this);
     this.network.disconnect();
   }
 
@@ -86,10 +90,11 @@ export class GameController extends Component {
     }
     this.send('START_GAME', { roomId: this.roomId });
   }
-  public onClickRollDice(): void {
+  public onClickRollDice(debugDice?: number): void {
     if (!this.roomId) return;
+    if (debugDice !== undefined && (!Number.isInteger(debugDice) || debugDice < 1 || debugDice > 6)) return;
     this.gameUI?.setDiceRequestPending();
-    this.send('ROLL_DICE', { roomId: this.roomId });
+    this.send('ROLL_DICE', { roomId: this.roomId, ...(debugDice === undefined ? {} : { debugDice }) });
   }
   /** Supports both generated-node events (piece id first) and Cocos Button custom data. */
   public onClickPiece(pieceOrEvent: unknown, customPieceId = ''): void {
@@ -123,6 +128,8 @@ export class GameController extends Component {
       case 'GAME_CHAT': if (this.snapshot) this.gameUI?.showChatDialog(this.snapshot, this.playerId); break;
       case 'LEAVE_ROOM': this.onClickLeaveRoom(); break;
       case 'ROLL_DICE': this.onClickRollDice(); break;
+      case 'DEBUG_DICE': this.gameUI?.showDebugDiceDialog(); break;
+      case 'CALIBRATE': this.send('CALIBRATION_OPEN', {}); break;
       default: break;
     }
   }
@@ -153,6 +160,27 @@ export class GameController extends Component {
     });
     this.network.on('CHAT_MESSAGE', (message) => this.gameUI?.appendChatEntry(message.data as ChatEntry));
     this.network.on('SYSTEM_MESSAGE', (message) => this.gameUI?.appendChatEntry(message.data as ChatEntry));
+    this.network.on('BOARD_CALIBRATION_DATA', (message) => {
+      this.boardController?.applyCalibrationData(message.data as BoardCalibrationData);
+      if (this.snapshot) this.boardController?.applySnapshot(this.snapshot);
+    });
+    this.network.on('BOARD_CALIBRATION_OPEN', (message) => {
+      const target = message.data as BoardCalibrationOpen;
+      this.gameUI?.closeChatDialog();
+      this.gameUI?.showCalibrationStatus(target);
+      this.boardController?.startCalibration(target);
+    });
+    this.network.on('BOARD_CALIBRATION_SAVED', (message) => {
+      const data = message.data as { next?: BoardCalibrationOpen; complete?: boolean };
+      if (data.next) {
+        this.gameUI?.showCalibrationStatus(data.next);
+        this.boardController?.startCalibration(data.next);
+      } else {
+        this.gameUI?.showCalibrationStatus(null);
+        this.boardController?.stopCalibration();
+        this.gameUI?.showStatus('棋盘节点校准已保存');
+      }
+    });
     this.network.on('ERROR', (message) => this.showError(message));
   }
 
@@ -178,6 +206,19 @@ export class GameController extends Component {
     if (!this.roomId || !data.content) return;
     this.send('CHAT_SEND', { roomId: this.roomId, content: data.content, recipientId: data.recipientId });
   }
+  private handleDebugRoll(value: unknown): void {
+    if (typeof value !== 'number') return;
+    const snapshot = this.snapshot;
+    if (!snapshot || snapshot.currentPlayerId !== this.playerId || snapshot.phase !== 'WAIT_ROLL') {
+      this.gameUI?.showError('仅能在轮到你投骰子时指定点数');
+      return;
+    }
+    this.onClickRollDice(value);
+  }
+  private handleCalibrationSave(data: unknown): void {
+    if (!data || typeof data !== 'object') return;
+    this.send('CALIBRATION_SAVE', data as Record<string, unknown>);
+  }
 
   private authenticate(): void {
     const guestId = sys.localStorage.getItem(GUEST_KEY) ?? this.createGuestId();
@@ -186,10 +227,11 @@ export class GameController extends Component {
   }
 
   private handleAuth(message: ServerMessage): void {
-    const data = message.data as { playerId: string; sessionId: string; nickname?: string };
+    const data = message.data as { playerId: string; sessionId: string; nickname?: string; isAdmin?: boolean };
     this.playerId = data.playerId;
     this.playerNickname = data.nickname ?? this.playerNickname;
     this.sessionId = data.sessionId;
+    this.gameUI?.setAdmin(data.isAdmin === true);
     sys.localStorage.setItem(PLAYER_KEY, data.playerId);
     if (this.pendingAccountAuthentication) {
       this.pendingAccountAuthentication = false;
