@@ -1,16 +1,59 @@
 # SkillLudo Client
 
-Cocos Creator 3.8.8 的四人联机飞行棋客户端。客户端只负责输入、UI 和动画；骰子与规则裁决全部来自 `../SkillLudo_Server`。
+Cocos Creator **3.8.8**，2D 矢量棋盘 + 真实 3D 飞机/骰子。权威规则和随机数由相邻仓库 `../SkillLudo_Server` 提供，当前协议版本 **2**，必须配套更新。
 
-## 场景接线
+## 开发与构建
 
-1. 在 Cocos Creator 打开本项目并新建/打开 2D 场景，在 `Canvas` 下放一个节点作为棋盘根节点，挂载 `BoardController`。
-2. 在 `Canvas` 或根节点挂载 `GameController`，并在 Inspector 中绑定 `BoardController`、`GameUI`。本地调试服务地址保持 `ws://127.0.0.1:3000`。
-3. 挂载 `GameUI` 即可：如果未手动绑定 Label、输入框和按钮，它会在运行时自动生成完整的调试 HUD（创建/加入房间、准备、开始、投骰子）。
-4. 默认棋盘资源是 `assets/resources/textures/ludo-classic-board-cropped.png`。该资源和 HUD 都在点击 Cocos 的运行按钮后动态生成，因此 Scene 编辑视图中不会预先显示；这是正常的。
+在 Creator 打开本项目和现有 `assets/scenes/Main.scene`，不需要重新搭场景。棋盘、模型和界面在运行时生成，编辑器静态视图不显示完整游戏。`GameController.serverUrl` 默认 `ws://127.0.0.1:3000`，正常账号入口需启动服务端及其 MySQL 配置。
 
-`BoardController` 会加载常见十字布局棋盘并在对局开始后生成 16 架飞机。其坐标映射位于 `assets/scripts/game/BoardLayout.ts`；修改美术或分辨率时只需替换该表现层，不要把规则移入 Cocos 端。
+```powershell
+npm ci
+npm run check
+npm test
+npm run board:export
+npm run build:web
+npm run preview:build
+```
 
-## 微信发布
+首次克隆应先让 Creator 导入项目，以生成 `temp/tsconfig.cocos.json`。命令行构建脚本默认查找 Windows 安装位置；不同安装位置设置 `COCOS_CREATOR` 为 Creator 3.8.8 可执行文件路径。正式 Web 产物在 `build/web-desktop`，本地静态服务端口 7459。需要调试构建时设置 `SKILLLUDO_DEBUG_BUILD=1`，正常构建默认关闭调试。
 
-小游戏发布前将 `GameController.serverUrl` 配为已备案、TLS 终止后的 `wss://` 域名，并把 `SessionManager` 的开发游客认证替换为微信登录凭证的服务端校验。
+## 代码入口
+
+| 模块 | 职责 |
+| --- | --- |
+| `BoardGeometry / BoardArtwork / BoardLayout` | 原图描图、96 格心、校准覆盖和标准坐标 |
+| `BoardScene3D / TokenMeshes` | 网格模型、独立正交相机、透明渲染合成、落点阴影和点击区域 |
+| `DiceView3D / DiceMotion` | 六面骰子、抛掷/回弹、服务器点数定面和重连恢复 |
+| `BoardController / MotionTimeline` | 逐格移动、跳跃、虫洞、吃子、终点返航；可取消动画 |
+| `GameController / PresentationQueue / NetworkManager` | 命令、顺序播放消息、快照、输入锁、断线恢复 |
+| `GameUI / MatchHud` | 账号/房间与对局操作界面 |
+| `ResponsiveCanvas / GameViewport` | 横竖屏等比画布、棋盘和操作区布局 |
+
+新默认棋盘由代码绘制，原 PNG `assets/resources/textures/ludo-classic-board-cropped.png` 保留作参照。复刻图与逐格标记见 `docs/board/classic-board-v2.svg`、`anchors-review.svg`、`default-positions.json`。全部默认格心来自同一几何数据，普通落子无额外 XY 偏移，叠子使用高度区分。
+
+管理账号的校准入口与聊天 `adjust 01` 等命令保留。拖动黑色标记后确认，保存到服务端 `config/board-positions.json`；旋转只影响显示，保存坐标会逆变换回标准棋盘坐标。已有校准覆盖继续有效，无覆盖时直接使用新默认格心。
+
+## 联机验收
+
+相邻服务端仓库执行 `npm run verify:server`（端口 3101，内存身份、无需 MySQL），客户端另一个终端执行 `npm run preview:build`。然后：
+
+```powershell
+npm run verify:fixtures
+npm run verify:browser
+```
+
+浏览器脚本使用 Playwright 和本机 Chrome。可通过 `PLAYWRIGHT_PATH`、`SKILLLUDO_BROWSER` 指定路径；本机 Codex 依赖也可自动发现。脚本只在测试浏览器里将默认 3000 端口替换为 3101，并设置本地游客 UI；这不修改正式认证流程。检查包括真实点击选骰/选飞机/确认移动、重连、视角、特殊动作、格心、旋转校准和横竖屏。`docs/verification/README.md` 区分真实联机和本地表现夹具。
+
+## 微信小游戏
+
+```powershell
+$env:WECHAT_APP_ID = '<你的小游戏 AppID>'
+npm run build:wechat
+npm run verify:wechat
+```
+
+导入微信开发者工具的目录为 `build/wechatgame`。未设置 AppID 时用 `touristappid` 生成验证包；最终验证产物为 30 个文件、3,530,535 字节（约 3.53 MB），静态预算检查通过。保持横屏、真实 3D 网格与程序动画，不依赖 3D 物理或额外 WASM。原图仍在包内。
+
+这次已完成 Creator 构建和静态包体检查，尚未完成微信真机运行、上传或审核。上线配置还需真实 AppID、客户端 WSS 地址、微信后台 socket 合法域名、服务端微信登录凭证校验；生产环境关闭调试骰子。微信端内存、帧率、RenderTexture、切后台恢复及刘海/胶囊安全区须在真机验收。
+
+平台依据：[Cocos 微信发布文档](https://docs.cocos.com/creator/3.8/manual/en/editor/publish/publish-wechatgame.html)、[RenderTexture](https://docs.cocos.com/creator/3.8/manual/en/asset/render-texture.html)、[命令行构建](https://docs.cocos.com/creator/3.8/manual/en/editor/publish/publish-in-command-line.html)。恢复进度见 `docs/重构进度日志.md`。
