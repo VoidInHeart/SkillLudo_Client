@@ -1,0 +1,136 @@
+{
+  "errors": [],
+  "checks": [
+    "real socket color preferences",
+    "two local perspectives",
+    "physical die and plane pointer input",
+    "move confirmation pointer input",
+    "pending dice reconnect",
+    "four authority-calculated motion fixtures",
+    "exact motion endpoints",
+    "rotated manual calibration drag and inverse",
+    "portrait resize"
+  ],
+  "state": {
+    "pieces": [
+      {
+        "id": "green-1",
+        "playerId": "p_8cfab713-926f-44b7-97ed-8d6170870d8a",
+        "color": "GREEN",
+        "state": "MAIN_PATH",
+        "progress": 0
+      },
+      {
+        "id": "green-2",
+        "playerId": "p_8cfab713-926f-44b7-97ed-8d6170870d8a",
+        "color": "GREEN",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "green-3",
+        "playerId": "p_8cfab713-926f-44b7-97ed-8d6170870d8a",
+        "color": "GREEN",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "green-4",
+        "playerId": "p_8cfab713-926f-44b7-97ed-8d6170870d8a",
+        "color": "GREEN",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "blue-1",
+        "playerId": "p_1f16fd3f-507c-483c-b0a7-49bce945bab5",
+        "color": "BLUE",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "blue-2",
+        "playerId": "p_1f16fd3f-507c-483c-b0a7-49bce945bab5",
+        "color": "BLUE",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "blue-3",
+        "playerId": "p_1f16fd3f-507c-483c-b0a7-49bce945bab5",
+        "color": "BLUE",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "blue-4",
+        "playerId": "p_1f16fd3f-507c-483c-b0a7-49bce945bab5",
+        "color": "BLUE",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "red-1",
+        "playerId": "ai_856206_3",
+        "color": "RED",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "red-2",
+        "playerId": "ai_856206_3",
+        "color": "RED",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "red-3",
+        "playerId": "ai_856206_3",
+        "color": "RED",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "red-4",
+        "playerId": "ai_856206_3",
+        "color": "RED",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "yellow-1",
+        "playerId": "ai_856206_4",
+        "color": "YELLOW",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "yellow-2",
+        "playerId": "ai_856206_4",
+        "color": "YELLOW",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "yellow-3",
+        "playerId": "ai_856206_4",
+        "color": "YELLOW",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "yellow-4",
+        "playerId": "ai_856206_4",
+        "color": "YELLOW",
+        "state": "AIRPORT",
+        "progress": -1
+      }
+    ],
+    "render": {
+      "actors": 16,
+      "meshVertices": 468
+    },
+    "phase": "WAIT_ROLL",
+    "room": "856206"
+  }
+}

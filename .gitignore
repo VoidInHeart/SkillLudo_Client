@@ -13,6 +13,10 @@ native
 #//////////////////////////
 node_modules/
 
+# Browser failure diagnostics are local; successful evidence is kept in docs.
+docs/verification/failure-*.png
+docs/verification/preview-errors.json
+
 #//////////////////////////
 # VSCode
 #//////////////////////////

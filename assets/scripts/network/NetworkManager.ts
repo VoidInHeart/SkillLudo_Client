@@ -16,23 +16,32 @@ export class NetworkManager {
   public connect(url: string): Promise<void> {
     this.url = url;
     this.manuallyDisconnected = false;
+    if (this.reconnectTimer !== null) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
+    this.stopHeartbeat();
     return new Promise((resolve, reject) => {
       try {
         this.socket?.close();
         const socket = new WebSocket(url);
         this.socket = socket;
         socket.onopen = () => {
+          if (this.socket !== socket) return;
           this.reconnectAttempt = 0;
           this.startHeartbeat();
           this.emit('OPEN', { type: 'PONG', data: {}, serverTime: Date.now() });
           resolve();
         };
-        socket.onmessage = (event) => this.handleMessage(event.data);
+        socket.onmessage = (event) => { if (this.socket === socket) this.handleMessage(event.data); };
         socket.onerror = () => {
+          if (this.socket !== socket) return;
           if (socket.readyState !== WebSocket.OPEN) reject(new Error('无法连接游戏服务器'));
           this.emit('NETWORK_ERROR', { type: 'ERROR', data: { code: 'NETWORK_ERROR', message: '网络连接异常' }, serverTime: Date.now() });
         };
         socket.onclose = () => {
+          // A late close from a replaced connection must not tear down the
+          // new connection's heartbeat or reset its presentation queue.
+          if (this.socket !== socket) return;
+          this.socket = null;
           this.stopHeartbeat();
           this.emit('CLOSE', { type: 'ERROR', data: { code: 'DISCONNECTED', message: '连接已断开' }, serverTime: Date.now() });
           if (!this.manuallyDisconnected) this.scheduleReconnect();

@@ -1,0 +1,11 @@
+import { Application } from '<%= applicationJS %>';
+
+const application = new Application();
+System.import('cc').then((engine) => {
+    // Creator's desktop template defaults to a fixed subframe. Configure the
+    // screen before its initialization so resize updates the render buffer.
+    engine.game.onPostBaseInitDelegate.add(() => {
+        engine.settings.overrideSettings('screen', 'exactFitScreen', true);
+    });
+    return application.init(engine);
+}).then(() => application.start()).catch(console.error);

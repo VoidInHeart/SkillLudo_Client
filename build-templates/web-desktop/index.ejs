@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#172d45">
+    <title><%= projectName %> · 飞行棋</title>
+    <link rel="stylesheet" href="<%= cssUrl %>">
+    <link rel="icon" href="favicon.ico">
+  </head>
+  <body>
+    <div id="GameDiv" cc_exact_fit_screen="true">
+      <div id="Cocos3dGameContainer">
+        <canvas id="GameCanvas" tabindex="0" aria-label="飞行棋游戏"></canvas>
+      </div>
+    </div>
+    <%- include(cocosTemplate, {}) %>
+  </body>
+</html>

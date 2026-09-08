@@ -1,0 +1,224 @@
+[
+  {
+    "name": "capture",
+    "dice": 1,
+    "pieces": [
+      {
+        "id": "GREEN-1",
+        "playerId": "GREEN",
+        "color": "GREEN",
+        "progress": 2,
+        "state": "MAIN_PATH"
+      },
+      {
+        "id": "BLUE-1",
+        "playerId": "BLUE",
+        "color": "BLUE",
+        "progress": 29,
+        "state": "MAIN_PATH"
+      }
+    ],
+    "result": {
+      "pieceId": "GREEN-1",
+      "fromProgress": 2,
+      "toProgress": 3,
+      "path": [
+        3
+      ],
+      "segments": [
+        {
+          "kind": "WALK",
+          "fromProgress": 2,
+          "toProgress": 3,
+          "path": [
+            3
+          ]
+        }
+      ],
+      "captures": [
+        {
+          "pieceId": "BLUE-1",
+          "atProgress": 3
+        }
+      ],
+      "tookOff": false,
+      "jumped": false,
+      "usedFlightPath": false,
+      "killedPieceIds": [
+        "BLUE-1"
+      ],
+      "reachedFinish": false,
+      "playerFinished": false,
+      "extraTurn": false
+    }
+  },
+  {
+    "name": "wormhole",
+    "dice": 2,
+    "pieces": [
+      {
+        "id": "GREEN-1",
+        "playerId": "GREEN",
+        "color": "GREEN",
+        "progress": 12,
+        "state": "MAIN_PATH"
+      },
+      {
+        "id": "BLUE-1",
+        "playerId": "BLUE",
+        "color": "BLUE",
+        "progress": 1,
+        "state": "MAIN_PATH"
+      },
+      {
+        "id": "RED-1",
+        "playerId": "RED",
+        "color": "RED",
+        "progress": 43,
+        "state": "MAIN_PATH"
+      }
+    ],
+    "result": {
+      "pieceId": "GREEN-1",
+      "fromProgress": 12,
+      "toProgress": 30,
+      "path": [
+        13,
+        14,
+        18,
+        30
+      ],
+      "segments": [
+        {
+          "kind": "WALK",
+          "fromProgress": 12,
+          "toProgress": 14,
+          "path": [
+            13,
+            14
+          ]
+        },
+        {
+          "kind": "JUMP",
+          "fromProgress": 14,
+          "toProgress": 18,
+          "path": [
+            18
+          ]
+        },
+        {
+          "kind": "FLIGHT",
+          "fromProgress": 18,
+          "toProgress": 30,
+          "path": [
+            30
+          ]
+        }
+      ],
+      "captures": [
+        {
+          "pieceId": "RED-1",
+          "atProgress": 30
+        },
+        {
+          "pieceId": "BLUE-1",
+          "atProgress": 27
+        }
+      ],
+      "tookOff": false,
+      "jumped": true,
+      "usedFlightPath": true,
+      "killedPieceIds": [
+        "RED-1",
+        "BLUE-1"
+      ],
+      "reachedFinish": false,
+      "playerFinished": false,
+      "extraTurn": false
+    }
+  },
+  {
+    "name": "finish",
+    "dice": 1,
+    "pieces": [
+      {
+        "id": "GREEN-1",
+        "playerId": "GREEN",
+        "color": "GREEN",
+        "progress": 55,
+        "state": "MAIN_PATH"
+      }
+    ],
+    "result": {
+      "pieceId": "GREEN-1",
+      "fromProgress": 55,
+      "toProgress": 56,
+      "path": [
+        56
+      ],
+      "segments": [
+        {
+          "kind": "WALK",
+          "fromProgress": 55,
+          "toProgress": 56,
+          "path": [
+            56
+          ]
+        }
+      ],
+      "captures": [],
+      "tookOff": false,
+      "jumped": false,
+      "usedFlightPath": false,
+      "killedPieceIds": [],
+      "reachedFinish": true,
+      "playerFinished": false,
+      "extraTurn": false
+    }
+  },
+  {
+    "name": "rebound",
+    "dice": 4,
+    "pieces": [
+      {
+        "id": "GREEN-1",
+        "playerId": "GREEN",
+        "color": "GREEN",
+        "progress": 55,
+        "state": "MAIN_PATH"
+      }
+    ],
+    "result": {
+      "pieceId": "GREEN-1",
+      "fromProgress": 55,
+      "toProgress": 53,
+      "path": [
+        56,
+        55,
+        54,
+        53
+      ],
+      "segments": [
+        {
+          "kind": "WALK",
+          "fromProgress": 55,
+          "toProgress": 53,
+          "path": [
+            56,
+            55,
+            54,
+            53
+          ]
+        }
+      ],
+      "captures": [],
+      "tookOff": false,
+      "jumped": false,
+      "usedFlightPath": false,
+      "killedPieceIds": [],
+      "reachedFinish": false,
+      "playerFinished": false,
+      "extraTurn": false
+    }
+  }
+]

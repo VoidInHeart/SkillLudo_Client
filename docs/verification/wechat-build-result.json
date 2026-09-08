@@ -1,0 +1,38 @@
+{
+  "status": "passed",
+  "platform": "wechatgame",
+  "creator": "3.8.8",
+  "releaseBuild": true,
+  "orientation": "landscape",
+  "appIdConfigured": false,
+  "fileCount": 30,
+  "totalBytes": 3530535,
+  "budgetBytes": 4194304,
+  "largestFiles": [
+    {
+      "path": "assets/resources/native/43/43f3fa47-507d-42c4-8476-6f933430f4a6.png",
+      "bytes": 1482126
+    },
+    {
+      "path": "cocos-js/cc.js",
+      "bytes": 1462982
+    },
+    {
+      "path": "assets/internal/import/0a/0adc9b847.json",
+      "bytes": 243045
+    },
+    {
+      "path": "assets/main/index.js",
+      "bytes": 99605
+    },
+    {
+      "path": "web-adapter.js",
+      "bytes": 90055
+    },
+    {
+      "path": "assets/internal/index.js",
+      "bytes": 45110
+    }
+  ],
+  "validation": "Static build and conservative package budget only; no WeChat device or upload verification."
+}

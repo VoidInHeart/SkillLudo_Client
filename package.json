@@ -3,5 +3,22 @@
   "uuid": "61b9926f-95c8-4332-a0b2-90101678f455",
   "creator": {
     "version": "3.8.8"
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --test tests/*.test.ts",
+    "board:export": "tsx scripts/export-board.ts",
+    "assets:meta": "node scripts/asset-metadata.mjs",
+    "verify:fixtures": "tsx scripts/export-motion-fixtures.ts",
+    "verify:browser": "node scripts/preview-smoke.mjs --url=http://127.0.0.1:7459",
+    "verify:wechat": "node scripts/verify-wechat-build.mjs",
+    "preview:build": "node scripts/serve-build.mjs",
+    "build:web": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-cocos.ps1 -Platform web-desktop",
+    "build:wechat": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-cocos.ps1 -Platform wechatgame"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2",
+    "tsx": "^4.19.2"
   }
 }

@@ -1,4 +1,7 @@
-import { _decorator, Component, js, sys } from 'cc';
+import { _decorator, Component, Game, game, js, sys } from 'cc';
+import { PROTOCOL_VERSION, type DiceResult, type DieSelected, type PlayerColor } from '../protocol/GameProtocol';
+import { PresentationQueue } from './PresentationQueue';
+import { ResponsiveCanvas } from './ResponsiveCanvas';
 import { BoardController } from './BoardController';
 import { NetworkManager } from '../network/NetworkManager';
 import type { ActiveGameSummary, BoardCalibrationData, BoardCalibrationOpen, ChatEntry, ErrorPayload, GameSnapshot, MoveResult, ServerMessage } from '../protocol/GameProtocol';
@@ -21,6 +24,20 @@ export class GameController extends Component {
   @property(BoardController) public boardController: BoardController | null = null;
   @property(GameUI) public gameUI: GameUI | null = null;
 
+  private presentationBusy = false;
+  private commandPending = false;
+  private appHidden = false;
+  private responsiveCanvas: ResponsiveCanvas | null = null;
+  private readonly presentation = new PresentationQueue((busy) => {
+    this.presentationBusy = busy;
+    this.gameUI?.setPresentationBusy(busy);
+    this.refreshMovable();
+  }, (error) => {
+    console.error('Presentation failed', error);
+    this.boardController?.cancelAnimations();
+    this.gameUI?.showError('画面已重新同步');
+    if (this.roomId) this.send('RECONNECT', { roomId: this.roomId });
+  });
   private readonly network = new NetworkManager();
   private playerId = '';
   private playerNickname = '';
@@ -32,6 +49,7 @@ export class GameController extends Component {
   private exitedGameRoomId = '';
 
   public onLoad(): void {
+    this.responsiveCanvas = new ResponsiveCanvas();
     this.playerId = sys.localStorage.getItem(PLAYER_KEY) ?? '';
     this.sessionId = this.readAutoLoginSession();
     this.autoLoginRequested = !!this.sessionId;
@@ -45,6 +63,10 @@ export class GameController extends Component {
     this.gameUI?.node.on('debug-roll', this.handleDebugRoll, this);
     this.boardController?.node.on('calibration-save', this.handleCalibrationSave, this);
     this.gameUI?.node.on('rejoin-game', this.handleRejoinGame, this);
+    this.boardController?.node.on('die-selected', this.onClickDie, this);
+    this.gameUI?.node.on('color-preference', this.onColorPreference, this);
+    game.on(Game.EVENT_HIDE, this.onAppHide, this);
+    game.on(Game.EVENT_SHOW, this.onAppShow, this);
     this.bindNetworkEvents();
   }
 
@@ -56,6 +78,7 @@ export class GameController extends Component {
   }
 
   public onDestroy(): void {
+    this.responsiveCanvas?.destroy();
     this.boardController?.node.off('piece-selected', this.onClickPiece, this);
     this.gameUI?.node.off('ui-action', this.handleUiAction, this);
     this.gameUI?.node.off('join-room', this.onClickJoinRoom, this);
@@ -64,6 +87,11 @@ export class GameController extends Component {
     this.gameUI?.node.off('debug-roll', this.handleDebugRoll, this);
     this.boardController?.node.off('calibration-save', this.handleCalibrationSave, this);
     this.gameUI?.node.off('rejoin-game', this.handleRejoinGame, this);
+    this.boardController?.node.off('die-selected', this.onClickDie, this);
+    this.gameUI?.node.off('color-preference', this.onColorPreference, this);
+    game.off(Game.EVENT_HIDE, this.onAppHide, this);
+    game.off(Game.EVENT_SHOW, this.onAppShow, this);
+    this.resetPresentation();
     this.network.disconnect();
   }
 
@@ -78,12 +106,13 @@ export class GameController extends Component {
     this.send('LEAVE_ROOM', { roomId });
     // LEAVE_ROOM deliberately has no snapshot for the leaver. Return this client
     // to the lobby immediately while the remaining members receive the update.
+    this.resetPresentation();
     this.snapshot = null;
     sys.localStorage.removeItem(ROOM_KEY);
     this.boardController?.setBoardVisible(false);
     this.gameUI?.showHome();
   }
-  public onClickReady(): void { if (this.roomId) this.send('READY', { roomId: this.roomId }); }
+  public onClickReady(): void { if (this.roomId) this.send(this.snapshot?.players.find((p) => p.id === this.playerId)?.ready ? 'CANCEL_READY' : 'READY', { roomId: this.roomId }); }
   public onClickCancelReady(): void { if (this.roomId) this.send('CANCEL_READY', { roomId: this.roomId }); }
   public onClickStartGame(): void {
     if (!this.roomId) return;
@@ -94,9 +123,10 @@ export class GameController extends Component {
     this.send('START_GAME', { roomId: this.roomId });
   }
   public onClickRollDice(debugDice?: number): void {
-    if (!this.roomId) return;
+    if (!this.roomId || this.presentationBusy || this.commandPending || this.snapshot?.currentPlayerId !== this.playerId || this.snapshot.phase !== 'WAIT_ROLL') return;
     if (this.snapshot?.players.find((player) => player.id === this.playerId)?.aiControlled) return;
     if (debugDice !== undefined && (!Number.isInteger(debugDice) || debugDice < 1 || debugDice > 6)) return;
+    this.commandPending = true;
     this.gameUI?.setDiceRequestPending();
     this.send('ROLL_DICE', { roomId: this.roomId, ...(debugDice === undefined ? {} : { debugDice }) });
   }
@@ -105,17 +135,19 @@ export class GameController extends Component {
     const pieceId = typeof pieceOrEvent === 'string' ? pieceOrEvent : customPieceId;
     const snapshot = this.snapshot;
     const localPlayer = snapshot?.players.find((player) => player.id === this.playerId);
-    if (!snapshot || localPlayer?.aiControlled || snapshot.currentPlayerId !== this.playerId || snapshot.phase !== 'WAIT_SELECT_PIECE' || snapshot.movablePieceIds.indexOf(pieceId) < 0 || snapshot.dice === null) return;
+    if (!snapshot || this.presentationBusy || this.commandPending || localPlayer?.aiControlled || snapshot.currentPlayerId !== this.playerId || snapshot.phase !== 'WAIT_SELECT_PIECE' || snapshot.movablePieceIds.indexOf(pieceId) < 0 || snapshot.dice === null) return;
     const preview = this.boardController?.showMovePreview(pieceId, snapshot.dice);
     if (!preview) return;
     const confirm = () => {
       const latest = this.snapshot;
-      if (!latest || latest.players.find((player) => player.id === this.playerId)?.aiControlled || latest.currentPlayerId !== this.playerId || latest.phase !== 'WAIT_SELECT_PIECE' || latest.movablePieceIds.indexOf(pieceId) < 0) {
+      if (!latest || this.commandPending || this.presentationBusy || latest.rollId !== snapshot.rollId || latest.roomId !== snapshot.roomId || latest.players.find((player) => player.id === this.playerId)?.aiControlled || latest.currentPlayerId !== this.playerId || latest.phase !== 'WAIT_SELECT_PIECE' || latest.movablePieceIds.indexOf(pieceId) < 0) {
         this.boardController?.clearMovePreview();
         return;
       }
       this.boardController?.clearMovePreview();
-      this.send('SELECT_PIECE', { roomId: this.roomId, pieceId });
+      this.commandPending = true;
+      this.gameUI?.setDiceRequestPending();
+      this.send('SELECT_PIECE', { roomId: this.roomId, pieceId, rollId: latest.rollId });
     };
     const cancel = () => this.boardController?.clearMovePreview();
     if (this.gameUI) this.gameUI.showMoveConfirmation(preview, confirm, cancel);
@@ -126,12 +158,14 @@ export class GameController extends Component {
     switch (action) {
       case 'CREATE_ROOM': this.onClickCreateRoom(); break;
       case 'JOIN_ROOM': this.gameUI?.showJoinRoomDialog(); break;
-      case 'QUICK_MATCH': this.send('QUICK_MATCH', {}); break;
+      case 'QUICK_MATCH': this.gameUI?.showStatus('快速匹配暂未开放'); break;
       case 'READY': this.onClickReady(); break;
       case 'START_GAME': this.onClickStartGame(); break;
       case 'CHAT':
       case 'GAME_CHAT': if (this.snapshot) this.gameUI?.showChatDialog(this.snapshot, this.playerId); break;
       case 'LEAVE_ROOM': this.onClickLeaveRoom(); break;
+      case 'SELECT_DIE_0': this.onClickDie(0); break;
+      case 'SELECT_DIE_1': this.onClickDie(1); break;
       case 'ROLL_DICE': this.onClickRollDice(); break;
       case 'DEBUG_DICE': this.gameUI?.showDebugDiceDialog(); break;
       case 'CALIBRATE': this.send('CALIBRATION_OPEN', {}); break;
@@ -147,24 +181,31 @@ export class GameController extends Component {
 
   private bindNetworkEvents(): void {
     this.network.on('OPEN', () => this.authenticate());
-    this.network.on('CLOSE', () => this.gameUI?.showStatus('连接已断开，正在重连…'));
+    this.network.on('CLOSE', () => { this.resetPresentation(); this.gameUI?.showStatus('连接已断开，正在重连…'); });
     this.network.on('NETWORK_ERROR', (message) => this.showError(message));
     this.network.on('AUTH_OK', (message) => this.handleAuth(message));
-    this.network.on('ROOM_CREATED', (message) => { this.exitedGameRoomId = ''; this.applySnapshot(message.data as GameSnapshot); });
-    this.network.on('GAME_START', (message) => { this.exitedGameRoomId = ''; this.applySnapshot(message.data as GameSnapshot); });
-    this.network.on('GAME_STATE', (message) => this.applySnapshotUnlessExited(message.data as GameSnapshot));
-    this.network.on('ROOM_STATE', (message) => this.applySnapshotUnlessExited(message.data as GameSnapshot));
+    this.network.on('ROOM_CREATED', (message) => { this.resetPresentation(); this.exitedGameRoomId = ''; this.queueSnapshot(message.data as GameSnapshot); });
+    this.network.on('GAME_START', (message) => { this.resetPresentation(); this.exitedGameRoomId = ''; this.queueSnapshot(message.data as GameSnapshot); });
+    this.network.on('GAME_STATE', (message) => this.queueSnapshot(message.data as GameSnapshot));
+    this.network.on('ROOM_STATE', (message) => this.queueSnapshot(message.data as GameSnapshot));
     this.network.on('DICE_RESULT', (message) => {
-      const data = message.data as { playerId: string; dice: number; skipped?: boolean };
-      this.gameUI?.playDiceRoll(data.dice);
-      this.gameUI?.showStatus(`${data.playerId === this.playerId ? '你' : '其他玩家'} 掷出了 ${data.dice}${data.skipped ? '，无棋可走' : ''}`);
+      const data = message.data as DiceResult;
+      this.presentation.enqueue(async () => {
+        if (!this.appHidden && this.snapshot?.roomId !== this.exitedGameRoomId) await this.boardController?.playDiceRoll(data.diceChoices, data.rollId);
+      });
+    });
+    this.network.on('DIE_SELECTED', (message) => {
+      const data = message.data as DieSelected;
+      this.presentation.enqueue(() => this.gameUI?.showStatus(`本回合选择 ${data.dice}${data.skipped ? '，无棋可走' : ''}`));
     });
     this.network.on('MOVE_RESULT', (message) => {
-      this.gameUI?.closeMoveConfirmation();
-      this.boardController?.clearMovePreview();
-      this.boardController?.playMove(message.data as MoveResult);
+      this.presentation.enqueue(async () => {
+        this.gameUI?.closeMoveConfirmation();
+        this.boardController?.clearMovePreview();
+        if (!this.appHidden && this.snapshot?.roomId !== this.exitedGameRoomId) await this.boardController?.playMove(message.data as MoveResult);
+      });
     });
-    this.network.on('GAME_OVER', (message) => this.applySnapshotUnlessExited(message.data as GameSnapshot));
+    this.network.on('GAME_OVER', (message) => this.queueSnapshot(message.data as GameSnapshot));
     this.network.on('CHAT_HISTORY', (message) => {
       const data = message.data as { entries?: ChatEntry[] };
       this.gameUI?.setChatEntries(data.entries ?? []);
@@ -173,7 +214,7 @@ export class GameController extends Component {
     this.network.on('SYSTEM_MESSAGE', (message) => this.gameUI?.appendChatEntry(message.data as ChatEntry));
     this.network.on('BOARD_CALIBRATION_DATA', (message) => {
       this.boardController?.applyCalibrationData(message.data as BoardCalibrationData);
-      if (this.snapshot) this.boardController?.applySnapshot(this.snapshot);
+      this.presentation.enqueue(() => { if (this.snapshot) this.boardController?.applySnapshot(this.snapshot); });
     });
     this.network.on('BOARD_CALIBRATION_OPEN', (message) => {
       const target = message.data as BoardCalibrationOpen;
@@ -195,6 +236,7 @@ export class GameController extends Component {
     this.network.on('GAME_EXITED', (message) => {
       const data = message.data as { roomId?: string };
       this.exitedGameRoomId = data.roomId ?? this.roomId;
+      this.resetPresentation();
       this.snapshot = null;
       sys.localStorage.removeItem(ROOM_KEY);
       this.boardController?.stopCalibration();
@@ -287,6 +329,8 @@ export class GameController extends Component {
   }
 
   private applySnapshot(snapshot: GameSnapshot): void {
+    if (snapshot.protocolVersion !== PROTOCOL_VERSION) { this.gameUI?.showError('前后端版本不一致，请更新后再进入游戏'); return; }
+    this.commandPending = false;
     if (snapshot.phase !== 'WAIT_SELECT_PIECE' || snapshot.currentPlayerId !== this.playerId) {
       this.gameUI?.closeMoveConfirmation();
       this.boardController?.clearMovePreview();
@@ -295,6 +339,7 @@ export class GameController extends Component {
     sys.localStorage.setItem(ROOM_KEY, snapshot.roomId);
     const inGame = snapshot.roomStatus !== 'WAITING';
     this.boardController?.setBoardVisible(inGame);
+    this.boardController?.setLocalColor(inGame ? snapshot.players.find((p) => p.id === this.playerId)?.color : undefined);
     this.boardController?.applySnapshot(snapshot);
     this.gameUI?.render(snapshot, this.playerId);
   }
@@ -307,12 +352,41 @@ export class GameController extends Component {
     this.applySnapshot(snapshot);
   }
 
+  private queueSnapshot(snapshot: GameSnapshot): void {
+    this.presentation.enqueue(() => this.applySnapshotUnlessExited(snapshot));
+  }
+  public onClickDie(index: number): void {
+    const state = this.snapshot;
+    if (!state || this.commandPending || this.presentationBusy || state.currentPlayerId !== this.playerId || state.phase !== 'WAIT_SELECT_DIE'
+      || state.players.find((p) => p.id === this.playerId)?.aiControlled || (index !== 0 && index !== 1)) return;
+    this.commandPending = true;
+    this.gameUI?.setDiceRequestPending();
+    this.send('SELECT_DIE', { roomId: state.roomId, dieIndex: index, rollId: state.rollId });
+  }
+  private onColorPreference(color: PlayerColor | null): void {
+    if (this.snapshot?.roomStatus === 'WAITING') this.send('SET_COLOR_PREFERENCE', { roomId: this.roomId, color });
+  }
+  private refreshMovable(): void {
+    const state = this.snapshot;
+    const allowed = !this.presentationBusy && !this.commandPending && state?.currentPlayerId === this.playerId
+      && !state.players.find((p) => p.id === this.playerId)?.aiControlled && state.phase === 'WAIT_SELECT_PIECE';
+    this.boardController?.setMovablePieces(allowed ? state!.movablePieceIds : []);
+  }
+  private resetPresentation(): void {
+    this.boardController?.cancelAnimations();
+    this.presentation.reset();
+    this.commandPending = false;
+  }
+  private onAppHide(): void { this.appHidden = true; this.resetPresentation(); }
+  private onAppShow(): void { this.appHidden = false; this.resetPresentation(); if (this.roomId) this.send('RECONNECT', { roomId: this.roomId }); }
+
   private send(type: Parameters<NetworkManager['send']>[0], data: Record<string, unknown>): void {
-    try { this.network.send(type, data); } catch (error) { this.gameUI?.showError(error instanceof Error ? error.message : '发送失败'); }
+    try { this.network.send(type, data); } catch (error) { this.commandPending = false; this.gameUI?.showError(error instanceof Error ? error.message : '发送失败'); }
   }
   private showError(message: ServerMessage): void {
     const data = message.data as ErrorPayload;
     this.pendingAccountAuthentication = false;
+    this.commandPending = false;
     if (data.code === 'INVALID_SESSION') {
       // Guest sessions are intentionally in-memory. A local server restart should
       // transparently create a fresh guest session instead of leaving the lobby stuck.
