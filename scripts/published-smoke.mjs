@@ -9,11 +9,12 @@ try { playwright = require(process.env.PLAYWRIGHT_PATH ?? 'playwright'); }
 catch { playwright = require(join(homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright')); }
 const url = process.env.SKILLLUDO_WEB_URL ?? 'http://81.70.145.148';
 const endpoint = process.env.SKILLLUDO_EXPECTED_SOCKET ?? url.replace(/^http/, 'ws').replace(/\/$/, '');
-const output = 'docs/verification';
+const output = process.env.SKILLLUDO_VERIFY_OUTPUT ?? 'docs/verification';
 mkdirSync(output, { recursive: true });
 const browser = await playwright.chromium.launch({ executablePath: process.env.SKILLLUDO_BROWSER ?? join(process.env.ProgramFiles ?? 'C:/Program Files', 'Google/Chrome/Application/chrome.exe'), headless: true, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const errors = [];
 const sockets = [];
+const socketEvents = [];
 const pages = [];
 async function openPlayer() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -23,17 +24,29 @@ async function openPlayer() {
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
   page.on('response', (response) => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
   // Observe the actual application socket; there is no URL replacement or auth stub.
-  page.on('websocket', (socket) => sockets.push(socket.url().replace(/\/$/, '')));
+  page.on('websocket', (socket) => {
+    sockets.push(socket.url().replace(/\/$/, ''));
+    socketEvents.push({ event: 'created', at: Date.now() });
+    socket.on('socketerror', (error) => socketEvents.push({ event: 'error', error, at: Date.now() }));
+    socket.on('close', () => socketEvents.push({ event: 'close', at: Date.now() }));
+  });
   await page.goto(url, { waitUntil: 'load', timeout: 90000 });
-  await page.waitForFunction(async () => {
-    try {
-      const cc = await System.import('cc');
-      const game = cc.director.getScene()?.getChildByName('Canvas')?.getChildByName('GameSystem')?.getComponent('GameController');
-      if (!game?.playerId) return false;
-      window.testGame = game;
-      return true;
-    } catch { return false; }
-  }, null, { timeout: 60000 });
+  // Await imports explicitly: a Promise itself must not satisfy the polling predicate.
+  let ready = false;
+  const deadline = Date.now() + 60000;
+  while (!ready && Date.now() < deadline) {
+    ready = await page.evaluate(async () => {
+      try {
+        const cc = await System.import('cc');
+        const game = cc.director.getScene()?.getChildByName('Canvas')?.getChildByName('GameSystem')?.getComponent('GameController');
+        if (!game?.playerId) return false;
+        window.testGame = game;
+        return true;
+      } catch { return false; }
+    });
+    if (!ready) await page.waitForTimeout(250);
+  }
+  assert.ok(ready, 'Cocos scene and real guest authentication must finish loading');
   assert.equal(await page.evaluate(() => testGame.serverUrl), endpoint);
   return page;
 }
@@ -69,7 +82,7 @@ try {
   writeFileSync(`${output}/published-result.json`, JSON.stringify(result, null, 2) + '\n');
   console.log(JSON.stringify(result));
 } catch (error) {
-  console.error(error, { errors, sockets });
+  console.error(error, { errors, sockets, socketEvents });
   for (const [index, page] of pages.entries()) await page.screenshot({ path: `${output}/failure-published-${index}.png` }).catch(() => {});
   process.exitCode = 1;
 } finally {

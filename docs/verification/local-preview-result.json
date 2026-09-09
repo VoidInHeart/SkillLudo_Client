@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-09-09T16:43:40.447Z",
+  "url": "http://127.0.0.1:7459",
+  "sockets": [
+    "ws://81.70.145.148",
+    "ws://81.70.145.148"
+  ],
+  "errors": [],
+  "checks": [
+    "real public page assets",
+    "unmodified automatic socket URL",
+    "real guest authentication",
+    "two-player room and colour preferences",
+    "start game",
+    "3D dual dice and selection"
+  ]
+}

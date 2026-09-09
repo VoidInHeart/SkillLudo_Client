@@ -54,7 +54,7 @@ npm run build:wechat
 npm run verify:wechat
 ```
 
-导入微信开发者工具的目录为 `build/wechatgame`。未设置 AppID 时用 `touristappid` 生成验证包；最终验证产物为 30 个文件、3,530,535 字节（约 3.53 MB），静态预算检查通过。保持横屏、真实 3D 网格与程序动画，不依赖 3D 物理或额外 WASM。原图仍在包内。
+导入微信开发者工具的目录为 `build/wechatgame`。未设置 AppID 时用 `touristappid` 生成验证包；最新验证产物为 30 个文件、3,531,517 字节（约 3.53 MB），静态预算检查通过。保持横屏、真实 3D 网格与程序动画，不依赖 3D 物理或额外 WASM。原图仍在包内。
 
 这次已完成 Creator 构建和静态包体检查，尚未完成微信真机运行、上传或审核。上线配置还需真实 AppID、客户端 WSS 地址、微信后台 socket 合法域名、服务端微信登录凭证校验；生产环境关闭调试骰子。微信端内存、帧率、RenderTexture、切后台恢复及刘海/胶囊安全区须在真机验收。
 
