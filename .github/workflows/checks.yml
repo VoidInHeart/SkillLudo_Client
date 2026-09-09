@@ -32,4 +32,4 @@ jobs:
           mkdir public
           printf 'CI config probe\n' > public/index.html
           docker build --network=none -f deploy/Dockerfile -t skillludo-web-config .
-          docker run --rm --network=none --add-host server:127.0.0.1 skillludo-web-config -t
+          docker run --rm --read-only --tmpfs /tmp:rw,noexec,nosuid,size=32m --network=none --add-host server:127.0.0.1 skillludo-web-config -t

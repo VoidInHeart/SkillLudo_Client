@@ -18,7 +18,7 @@ rollback() {
 }
 trap rollback ERR
 docker build --network=none -f deploy/Dockerfile -t "$image" .
-docker run --rm --network=none --add-host server:127.0.0.1 "$image" -t
+docker run --rm --read-only --tmpfs /tmp:rw,noexec,nosuid,size=32m --network=none --add-host server:127.0.0.1 "$image" -t
 docker save "$image" | k3s ctr images import --no-unpack -
 sed "s|__WEB_IMAGE__|$image|g" deploy/web.yaml | kubectl apply -f -
 kubectl -n skillludo rollout status deployment/web --timeout=120s

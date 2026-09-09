@@ -7,6 +7,7 @@ import { gzipSync } from 'node:zlib';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const host = args.find((arg) => arg.startsWith('--host='))?.slice(7) ?? 'SEBaseline';
+const sshOptions = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3'];
 if (!/^[a-zA-Z0-9_.@-]+$/.test(host) || host.startsWith('-')) throw new Error('Invalid SSH host');
 function run(command, args, capture = false) {
   const result = spawnSync(command, args, { cwd: root, windowsHide: true, encoding: 'utf8', stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit' });
@@ -52,7 +53,7 @@ run('tar', ['-czf', archive, '-C', staging, 'public', 'deploy']);
 console.log(JSON.stringify({ release, revision, sourceDirty, rawBytes, transferBytes, archive }));
 if (!args.includes('--package-only')) {
   const remoteDirectory = `/opt/skillludo/web/releases/${release}`;
-  run('ssh', ['-o', 'BatchMode=yes', host, `sudo -n mkdir -p '${remoteDirectory}' && sudo -n chown "$(id -u):$(id -g)" '${remoteDirectory}'`]);
-  run('scp', [archive, `${host}:${remoteDirectory}/web.tar.gz`]);
-  run('ssh', ['-o', 'BatchMode=yes', host, `cd '${remoteDirectory}' && tar -xzf web.tar.gz && sudo -n bash deploy/install-web.sh '${release}'`]);
+  run('ssh', [...sshOptions, host, `sudo -n mkdir -p '${remoteDirectory}' && sudo -n chown "$(id -u):$(id -g)" '${remoteDirectory}'`]);
+  run('scp', [...sshOptions, archive, `${host}:${remoteDirectory}/web.tar.gz`]);
+  run('ssh', [...sshOptions, host, `cd '${remoteDirectory}' && tar -xzf web.tar.gz && sudo -n bash deploy/install-web.sh '${release}'`]);
 }
