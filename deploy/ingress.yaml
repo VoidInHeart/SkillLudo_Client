@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  namespace: skillludo
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    # The original backend ingress remains available for a frontend rollback.
+    traefik.ingress.kubernetes.io/router.priority: '100'
+spec:
+  ingressClassName: traefik
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port: {name: http}

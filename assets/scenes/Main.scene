@@ -409,7 +409,7 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "serverUrl": "ws://127.0.0.1:3000",
+    "serverUrl": "",
     "boardController": {
       "__id__": 11
     },

@@ -7,7 +7,7 @@ $logDirectory = Join-Path $projectRoot 'temp\verification-build'
 New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
 $config = @{
   name = 'SkillLudo'; platform = $Platform; buildPath = 'project://build'; outputName = $Platform
-  debug = ($env:SKILLLUDO_DEBUG_BUILD -eq '1'); md5Cache = $false
+  debug = ($env:SKILLLUDO_DEBUG_BUILD -eq '1'); md5Cache = ($Platform -eq 'web-desktop')
   startScene = '5d2a7d9e-0b41-4e93-9f42-b7c19da63875'
   scenes = @(@{ url = 'db://assets/scenes/Main.scene'; uuid = '5d2a7d9e-0b41-4e93-9f42-b7c19da63875' })
 }

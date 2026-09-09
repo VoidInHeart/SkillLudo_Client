@@ -14,6 +14,8 @@
     "verify:browser": "node scripts/preview-smoke.mjs --url=http://127.0.0.1:7459",
     "verify:wechat": "node scripts/verify-wechat-build.mjs",
     "preview:build": "node scripts/serve-build.mjs",
+    "deploy:web": "node scripts/deploy-web.mjs",
+    "verify:published": "node scripts/published-smoke.mjs",
     "build:web": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-cocos.ps1 -Platform web-desktop",
     "build:wechat": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-cocos.ps1 -Platform wechatgame"
   },

@@ -1,0 +1,35 @@
+name: Client checks
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '**/*.md']
+  pull_request:
+    paths-ignore: ['docs/**', '**/*.md']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Pure client regression and publishing scripts
+        run: |
+          npm ci
+          npm run check:tests
+          npm test
+          for script in scripts/*.mjs; do node --check "$script"; done
+          bash -n deploy/install-web.sh
+      - name: Static host configuration
+        run: |
+          mkdir public
+          printf 'CI config probe\n' > public/index.html
+          docker build --network=none -f deploy/Dockerfile -t skillludo-web-config .
+          docker run --rm --network=none --add-host server:127.0.0.1 skillludo-web-config -t

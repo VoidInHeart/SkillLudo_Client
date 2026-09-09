@@ -4,7 +4,9 @@ Cocos Creator **3.8.8**，2D 矢量棋盘 + 真实 3D 飞机/骰子。权威规�
 
 ## 开发与构建
 
-在 Creator 打开本项目和现有 `assets/scenes/Main.scene`，不需要重新搭场景。棋盘、模型和界面在运行时生成，编辑器静态视图不显示完整游戏。`GameController.serverUrl` 默认 `ws://127.0.0.1:3000`，正常账号入口需启动服务端及其 MySQL 配置。
+在 Creator 打开本项目和现有 `assets/scenes/Main.scene`，不需要重新搭场景。棋盘、模型和界面在运行时生成，编辑器静态视图不显示完整游戏。`GameController.serverUrl` 留空自动选择：公网网页连接本站，Creator 本地预览连接 `ws://81.70.145.148`；需要本机联调时显式填 `ws://127.0.0.1:3000` 并启动本机后端及 MySQL。
+
+网页入口为 <http://81.70.145.148>。`npm run deploy:web` 可构建并发布到服务器，完整说明见 [Web 部署](docs/Web部署.md)。
 
 ```powershell
 npm ci
@@ -42,7 +44,7 @@ npm run verify:fixtures
 npm run verify:browser
 ```
 
-浏览器脚本使用 Playwright 和本机 Chrome。可通过 `PLAYWRIGHT_PATH`、`SKILLLUDO_BROWSER` 指定路径；本机 Codex 依赖也可自动发现。脚本只在测试浏览器里将默认 3000 端口替换为 3101，并设置本地游客 UI；这不修改正式认证流程。检查包括真实点击选骰/选飞机/确认移动、重连、视角、特殊动作、格心、旋转校准和横竖屏。`docs/verification/README.md` 区分真实联机和本地表现夹具。
+浏览器脚本使用 Playwright 和本机 Chrome。可通过 `PLAYWRIGHT_PATH`、`SKILLLUDO_BROWSER` 指定路径；本机 Codex 依赖也可自动发现。`verify:browser` 只在测试浏览器中显式连接 3101（可用 `SKILLLUDO_TEST_SERVER` 覆盖），并设置本地游客 UI；这不修改正式认证流程。检查包括真实点击选骰/选飞机/确认移动、重连、视角、特殊动作、格心、旋转校准和横竖屏。`docs/verification/README.md` 区分真实联机和本地表现夹具。`verify:published` 单独验收公网网页和实际自动选址，不使用端口替换。
 
 ## 微信小游戏
 

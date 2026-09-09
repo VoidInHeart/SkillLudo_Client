@@ -13,10 +13,10 @@ const output = 'docs/verification'; mkdirSync(output, { recursive: true });
 const url = process.argv.find((arg) => arg.startsWith('--url='))?.slice(6) ?? process.env.SKILLLUDO_PREVIEW_URL ?? 'http://localhost:7456';
 async function openPlayer(name) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  await context.addInitScript(() => {
+  await context.addInitScript((endpoint) => {
     const NativeSocket = window.WebSocket;
-    window.WebSocket = class extends NativeSocket { constructor(url, protocols) { super(String(url).replace('127.0.0.1:3000', '127.0.0.1:3101'), protocols); } };
-  });
+    window.WebSocket = class extends NativeSocket { constructor(_url, protocols) { super(endpoint, protocols); } };
+  }, process.env.SKILLLUDO_TEST_SERVER ?? 'ws://127.0.0.1:3101');
   const page = await context.newPage();
   const record = (error) => { const text = String(error); if (!errors.includes(text) && errors.length < 20) errors.push(text); };
   page.on('pageerror', record);

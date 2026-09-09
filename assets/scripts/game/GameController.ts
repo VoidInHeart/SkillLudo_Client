@@ -4,6 +4,7 @@ import { PresentationQueue } from './PresentationQueue';
 import { ResponsiveCanvas } from './ResponsiveCanvas';
 import { BoardController } from './BoardController';
 import { NetworkManager } from '../network/NetworkManager';
+import { resolveServerUrl } from '../network/ServerEndpoint';
 import type { ActiveGameSummary, BoardCalibrationData, BoardCalibrationOpen, ChatEntry, ErrorPayload, GameSnapshot, MoveResult, ServerMessage } from '../protocol/GameProtocol';
 import { GameUI, type AccountActionData } from '../ui/GameUI';
 
@@ -19,8 +20,8 @@ const AUTO_LOGIN_LIFETIME_SECONDS = 30 * 24 * 60 * 60;
 /** Connect this component to the Canvas. Button click events call its public onClick* methods. */
 @ccclass('GameController')
 export class GameController extends Component {
-  @property({ tooltip: '本地预览使用 ws://127.0.0.1:3000；发布微信小游戏前改为 wss:// 域名。' })
-  public serverUrl = 'ws://127.0.0.1:3000';
+  @property({ tooltip: '留空自动连接：公网网页使用本站，Creator 本地预览使用 81.70.145.148。可填写 ws://127.0.0.1:3000 调试本机；微信发布需填写合法 WSS 域名。' })
+  public serverUrl = '';
   @property(BoardController) public boardController: BoardController | null = null;
   @property(GameUI) public gameUI: GameUI | null = null;
 
@@ -71,6 +72,7 @@ export class GameController extends Component {
   }
 
   public start(): void {
+    this.serverUrl = resolveServerUrl(this.serverUrl, sys.isBrowser && typeof window !== 'undefined' ? window.location : undefined);
     this.boardController?.setBoardVisible(false);
     this.gameUI?.showAuthPage();
     this.gameUI?.showStatus('正在连接 0 号服务器…');
