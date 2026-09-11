@@ -49,4 +49,6 @@ npm run verify:published
 
 可设置 `SKILLLUDO_WEB_URL`、`SKILLLUDO_EXPECTED_SOCKET` 验证本机预览页是否连接公网；`PLAYWRIGHT_PATH`、`SKILLLUDO_BROWSER` 可指定测试依赖。
 
-GitHub `Client checks` 自动执行 16 项纯逻辑回归、脚本语法和 Nginx 配置检查，不需要 Secrets。完整 Cocos 构建与前端发布由上述本机命令执行；后端原有 GitHub CI/CD 继续独立运行。不要将后端受限部署密钥改作前端 SSH shell 密钥。
+GitHub `Client checks` 自动执行 22 项纯逻辑回归、脚本语法和 Nginx 配置检查，不需要 Secrets。完整 Cocos 构建与前端发布由上述本机命令执行；后端原有 GitHub CI/CD 继续独立运行。不要将后端受限部署密钥改作前端 SSH shell 密钥。
+
+协议 4 的公开暂停验收：`npm run verify:published -- --lifecycle`，建立两参赛加一观战的真实公网房间，投票暂停、整页刷新恢复，并实际等待 120 秒自动恢复后继续投骰。默认回归仍是短流程。公网结果写 `published-result.json` / `published-lifecycle-result.json`；本机预览写 `local-preview-*.json`，避免互相覆盖。

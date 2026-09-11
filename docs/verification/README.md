@@ -8,7 +8,11 @@
 
 重现新增交互：服务端 `npm run verify:skill-fixtures`，客户端 `npm run verify:lifecycle`；前置为最新 Web 构建、7459 静态服务和 3101 独立验收服务。`skill-fixtures.json` 现在含七组场景。截图来源为 Chrome SwiftShader，不能当作手机性能数据。
 
-微信静态构建、线上发布结果以对应最新 JSON 时间和发布清单为准；以下为上一轮历史验收。
+当前生产为客户端 `e174337`、服务端 `774cf18`，协议 4，发布清单见 `release-v4.json`；两仓 CI 全部通过，包含真实 MySQL 集成。`published-result.json` 为公网页面实际连接公网后端的双人对局，`local-preview-result.json` 为本机预览自动连接公网，两者均无浏览器错误。
+
+`published-lifecycle-result.json` 另以两个参赛者和一个观战者，在真实公网完成观战加入/聊天、参赛真人全票技术暂停、整页刷新恢复同一身份/棋局/截止时间，实际等待 120 秒后恢复且未误入托管，再投双骰行动。截图为 `published-pause-reconnect.png`。复现：`npm run verify:published -- --lifecycle`；本机预览会输出 `local-preview-*`，避免覆盖公网证据。该验收不修改服务器时钟或注入棋局。
+
+微信静态构建成功：30 文件、3,572,525 字节，低于 4 MiB；尚未进行微信真机/上传验收或新版容量压测。以下为上一轮历史记录，其中同名 JSON 已由当前验收覆盖，历史版本清单仍为 `release-v3.json`。
 
 ## 历史：2026-09-11 协议 v3 / 阵营技能
 

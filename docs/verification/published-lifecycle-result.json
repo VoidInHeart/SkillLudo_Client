@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-09-11T12:01:50.072Z",
+  "url": "http://81.70.145.148",
+  "sockets": [
+    "ws://81.70.145.148",
+    "ws://81.70.145.148",
+    "ws://81.70.145.148",
+    "ws://81.70.145.148"
+  ],
+  "errors": [],
+  "checks": [
+    "real public page assets",
+    "unmodified automatic socket URL",
+    "protocol 4",
+    "real guest authentication",
+    "two-player room and colour preferences",
+    "start game",
+    "3D dual dice and atomic selection",
+    "real spectator joins and chats",
+    "unanimous human pause excludes spectator",
+    "page reload restores same identity and frozen position",
+    "real 120-second pause resumes without trustee takeover"
+  ]
+}

@@ -10,6 +10,7 @@ catch { playwright = require(join(homedir(), '.cache/codex-runtimes/codex-primar
 const url = process.env.SKILLLUDO_WEB_URL ?? 'http://81.70.145.148';
 const endpoint = process.env.SKILLLUDO_EXPECTED_SOCKET ?? url.replace(/^http/, 'ws').replace(/\/$/, '');
 const output = process.env.SKILLLUDO_VERIFY_OUTPUT ?? 'docs/verification';
+const artifactPrefix = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(url).hostname) ? 'local-preview' : 'published';
 mkdirSync(output, { recursive: true });
 const browser = await playwright.chromium.launch({ executablePath: process.env.SKILLLUDO_BROWSER ?? join(process.env.ProgramFiles ?? 'C:/Program Files', 'Google/Chrome/Application/chrome.exe'), headless: true, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const errors = [];
@@ -52,14 +53,21 @@ async function openPlayer() {
 }
 try {
   const a = await openPlayer();
-  await a.screenshot({ path: `${output}/published-login.png` });
+  await a.screenshot({ path: `${output}/${artifactPrefix}-login.png` });
   const b = await openPlayer();
+  const observer = process.argv.includes('--lifecycle') ? await openPlayer() : null;
   // The normal connection obtains a real guest identity; use it for a disposable room.
   await a.evaluate(() => testGame.onClickCreateRoom());
   await a.waitForFunction(() => testGame.snapshot?.roomStatus === 'WAITING');
   const roomId = await a.evaluate(() => testGame.snapshot.roomId);
   await b.evaluate((roomId) => testGame.onClickJoinRoom(roomId), roomId);
   await b.waitForFunction(() => testGame.snapshot?.players.length === 2);
+  if (observer) {
+    await observer.evaluate((roomId) => testGame.onClickJoinRoom(roomId), roomId);
+    await observer.waitForFunction(() => testGame.snapshot?.roomStatus === 'WAITING');
+    await observer.evaluate(() => testGame.gameUI.node.emit('color-preference', 'SPECTATOR'));
+    await a.waitForFunction(() => testGame.snapshot.spectators?.length === 1 && testGame.snapshot.players.length === 2);
+  }
   await a.evaluate(() => testGame.gameUI.node.emit('color-preference', 'GREEN'));
   await b.evaluate(() => testGame.gameUI.node.emit('color-preference', 'BLUE'));
   await a.waitForFunction(() => testGame.snapshot.players.some((player) => player.preferredColor === 'BLUE'));
@@ -68,11 +76,42 @@ try {
   await a.waitForFunction(() => testGame.snapshot.players.every((player) => player.ready));
   await a.evaluate(() => testGame.onClickStartGame());
   await a.waitForFunction(() => testGame.snapshot?.phase === 'WAIT_ROLL' && !testGame.presentationBusy);
+  assert.equal(await a.evaluate(() => testGame.snapshot.protocolVersion), 4);
+  if (observer) {
+    await observer.waitForFunction(() => testGame.snapshot?.phase === 'WAIT_ROLL');
+    assert.equal(await observer.evaluate(() => testGame.snapshot.players.some((p) => p.id === testGame.playerId)), false);
+    await observer.evaluate(() => testGame.gameUI.node.emit('chat-send', { content: '公网观战重连验收' }));
+    await a.evaluate(() => testGame.gameUI.node.emit('ui-action', 'TECH_PAUSE'));
+    await b.waitForFunction(() => !!testGame.snapshot?.lifecycle?.pauseVote);
+    await b.evaluate(() => testGame.gameUI.node.emit('lifecycle-input', { type: 'VOTE_PAUSE', voteId: testGame.snapshot.lifecycle.pauseVote.id, agree: true }));
+    await a.waitForFunction(() => !!testGame.snapshot?.lifecycle?.pause);
+    const frozen = await a.evaluate(() => ({ pieces: testGame.snapshot.pieces, pause: testGame.snapshot.lifecycle.pause, playerId: testGame.playerId }));
+    await a.reload();
+    let restored = false; const reloadDeadline = Date.now() + 60000;
+    while (!restored && Date.now() < reloadDeadline) {
+      restored = await a.evaluate(async () => {
+        try {
+          const cc = await System.import('cc');
+          const game = cc.director.getScene()?.getChildByName('Canvas')?.getChildByName('GameSystem')?.getComponent('GameController');
+          if (!game?.snapshot?.lifecycle?.pause) return false;
+          window.testGame = game; return true;
+        } catch { return false; }
+      });
+      if (!restored) await a.waitForTimeout(250);
+    }
+    assert.ok(restored, 'page reload restores the paused game automatically');
+    assert.deepEqual(await a.evaluate(() => ({ pieces: testGame.snapshot.pieces, pause: testGame.snapshot.lifecycle.pause, playerId: testGame.playerId })), frozen);
+    await a.screenshot({ path: `${output}/${artifactPrefix}-pause-reconnect.png` });
+    console.log('Public pause survives page reload; waiting for its real 120-second deadline.');
+    await a.waitForFunction(() => !testGame.snapshot?.lifecycle?.pause, null, { timeout: 125000 });
+    assert.deepEqual(await a.evaluate(() => testGame.snapshot.pieces), frozen.pieces);
+    assert.equal(await a.evaluate(() => testGame.snapshot.players.find((p) => p.id === testGame.playerId).aiControlled), false);
+  }
   const active = await a.evaluate(() => testGame.snapshot.currentPlayerId === testGame.playerId) ? a : b;
   await active.evaluate(() => testGame.onClickRollDice());
   await active.waitForFunction(() => testGame.snapshot.phase === 'WAIT_SELECT_DIE' && !testGame.presentationBusy, null, { timeout: 20000 });
   assert.equal(await active.evaluate(() => testGame.snapshot.diceChoices.length), 2);
-  await active.screenshot({ path: `${output}/published-game.png` });
+  await active.screenshot({ path: `${output}/${artifactPrefix}-game.png` });
   await active.evaluate(() => testGame.onClickDie(0));
   assert.equal(await active.evaluate(() => testGame.snapshot.phase), 'WAIT_SELECT_DIE');
   await active.evaluate(() => {
@@ -84,8 +123,8 @@ try {
   assert.ok(sockets.length >= 2);
   assert.ok(sockets.every((socket) => socket === endpoint), JSON.stringify(sockets));
   assert.deepEqual(errors, []);
-  const result = { status: 'passed', checkedAt: new Date().toISOString(), url, sockets, errors, checks: ['real public page assets', 'unmodified automatic socket URL', 'real guest authentication', 'two-player room and colour preferences', 'start game', '3D dual dice and selection'] };
-  writeFileSync(`${output}/published-result.json`, JSON.stringify(result, null, 2) + '\n');
+  const result = { status: 'passed', checkedAt: new Date().toISOString(), url, sockets, errors, checks: [artifactPrefix === 'published' ? 'real public page assets' : 'real local preview assets', 'unmodified automatic socket URL', 'protocol 4', 'real guest authentication', 'two-player room and colour preferences', 'start game', '3D dual dice and atomic selection', ...(observer ? ['real spectator joins and chats', 'unanimous human pause excludes spectator', 'page reload restores same identity and frozen position', 'real 120-second pause resumes without trustee takeover'] : [])] };
+  writeFileSync(`${output}/${artifactPrefix}${observer ? '-lifecycle' : ''}-result.json`, JSON.stringify(result, null, 2) + '\n');
   console.log(JSON.stringify(result));
 } catch (error) {
   console.error(error, { errors, sockets, socketEvents });
