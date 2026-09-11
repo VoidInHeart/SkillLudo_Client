@@ -1,5 +1,5 @@
 import { Button, Color, Graphics, Label, Layers, Node, UITransform, view } from 'cc';
-import type { GameSnapshot, PlayerColor } from '../protocol/GameProtocol';
+import type { ActionOption, GameSnapshot, PlayerColor } from '../protocol/GameProtocol';
 import { BOARD_COLORS } from '../game/BoardGeometry';
 import { gameViewport } from '../game/GameViewport';
 
@@ -19,6 +19,7 @@ export class MatchHud {
   private pending = false;
   private admin = false;
   private calibrationText = '';
+  private selectedOption: ActionOption | null = null;
   public constructor(parent: Node, private readonly emit: (action: string) => void) {
     this.root = this.node('MatchHud', parent, 286, 664);
     this.rebuild();
@@ -31,6 +32,7 @@ export class MatchHud {
   public setBusy(busy: boolean): void { this.busy = busy; this.refresh(); }
   public requestPending(): void { this.pending = true; this.refresh(); }
   public clearPending(): void { this.pending = false; this.refresh(); }
+  public setSelectedOption(option: ActionOption | null): void { this.selectedOption = option; this.refresh(); }
   public showStatus(message: string): void { this.text('status', message); }
   public showCalibration(message: string): void { this.calibrationText = message; this.text('calibration', message); }
   public render(snapshot: GameSnapshot, playerId: string): void {
@@ -80,9 +82,11 @@ export class MatchHud {
     this.text('dice', snapshot.phase === 'WAIT_SELECT_DIE' ? '选择本回合点数' : snapshot.dice ? `本回合选择：${snapshot.dice}` : '投出两枚骰子');
     for (let index = 0; index < 2; index += 1) {
       this.text(`SELECT_DIE_${index}`, pair ? String(pair[index]) : '—');
-      this.enable(`SELECT_DIE_${index}`, enabled && snapshot.phase === 'WAIT_SELECT_DIE', snapshot.selectedDieIndex === index && snapshot.phase === 'WAIT_SELECT_PIECE');
+      this.enable(`SELECT_DIE_${index}`, enabled && snapshot.phase === 'WAIT_SELECT_DIE', this.selectedOption?.dieIndex === index && snapshot.phase === 'WAIT_SELECT_DIE');
     }
-    this.enable('ROLL_DICE', enabled && snapshot.phase === 'WAIT_ROLL');
+    const canPass = snapshot.phase === 'WAIT_SELECT_DIE' && !!this.selectedOption && this.selectedOption.movablePieceIds.length === 0;
+    this.text('ROLL_DICE', canPass ? '无棋可动 · 确认跳过' : '掷出双骰');
+    this.enable('ROLL_DICE', enabled && (snapshot.phase === 'WAIT_ROLL' || canPass));
     this.enable('DEBUG_DICE', enabled && snapshot.phase === 'WAIT_ROLL');
     this.enable('GAME_CHAT', true);
     this.enable('AI_TAKEOVER', snapshot.roomStatus === 'PLAYING');
@@ -90,6 +94,8 @@ export class MatchHud {
     this.enable('CALIBRATE', this.admin && !this.busy);
     this.text('AI_TAKEOVER', local?.aiControlled ? '取消托管' : 'AI托管');
     let status = myTurn ? snapshot.phase === 'WAIT_SELECT_DIE' ? '点击棋盘骰子或点数卡选择' : snapshot.phase === 'WAIT_SELECT_PIECE' ? '请选择高亮飞机' : '轮到你投骰子' : `等待 ${current?.nickname ?? '玩家'}`;
+    if (myTurn && snapshot.phase === 'WAIT_SELECT_DIE' && this.selectedOption) status = this.selectedOption.movablePieceIds.length
+      ? `预选 ${this.selectedOption.dice} · 点击高亮飞机出发\n点击另一枚骰子可更换点数` : `预选 ${this.selectedOption.dice} · 无棋可动\n可换点数，或确认跳过`;
     if (this.busy) status = '正在播放棋局动作…';
     if (this.pending) status = '正在等待服务器…';
     if (snapshot.phase === 'GAME_OVER') status = `本局获胜：${snapshot.players.find((p) => p.id === snapshot.rankings[0])?.nickname ?? '对局结束'}`;

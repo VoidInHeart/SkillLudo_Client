@@ -1,5 +1,5 @@
-import { _decorator, Button, Canvas, Color, Component, EditBox, Graphics, js, Label, Layers, Node, UITransform, Vec3, view } from 'cc';
-import type { ChatEntry, GameSnapshot, PlayerColor, PlayerPublicState } from '../protocol/GameProtocol';
+import { _decorator, BlockInputEvents, Button, Canvas, Color, Component, EditBox, Graphics, js, Label, Layers, Node, UITransform, Vec3, view } from 'cc';
+import type { ActionOption, ChatEntry, GameSnapshot, PlayerColor, PlayerPublicState } from '../protocol/GameProtocol';
 import type { ActiveGameSummary, BoardCalibrationOpen } from '../protocol/GameProtocol';
 
 import { MatchHud } from './MatchHud';
@@ -26,7 +26,9 @@ export class GameUI extends Component {
   @property(Button) public startButton: Button | null = null;
 
   private matchHud: MatchHud | null = null;
-  private preferenceButtons = new Map<string, Button>();
+  private preferenceLabel: Label | null = null;
+  private preferenceMenu: Node | null = null;
+  private preferredColor: PlayerColor | null = null;
   private runtimeRoot: Node | null = null;
   private homeRoot: Node | null = null;
   private authRoot: Node | null = null;
@@ -85,6 +87,7 @@ export class GameUI extends Component {
   public onDestroy(): void { this.matchHud?.destroy(); }
   public setPresentationBusy(busy: boolean): void { this.matchHud?.setBusy(busy); }
   public setDiceRequestPending(): void { this.matchHud?.requestPending(); }
+  public setSelectedOption(option: ActionOption | null): void { this.matchHud?.setSelectedOption(option); }
 
   /** Updated after an account session is authenticated. The side drawer is intentionally
    * local-account based for now, leaving a stable place to attach a WeChat avatar later. */
@@ -257,17 +260,12 @@ export class GameUI extends Component {
     this.updateStartButtonAppearance(canStart);
     const local = snapshot.players.find((player) => player.id === localPlayerId);
     this.updateActionButtonTitle('READY', local?.ready ? '取消准备' : '准备');
-    this.preferenceButtons.forEach((button, key) => {
-      button.interactable = !!local;
-      const selected = (local?.preferredColor ?? 'ANY') === key;
-      const g = button.node.getComponent(Graphics)!;
-      g.clear(); g.fillColor = new Color(selected ? '#256fc0' : '#dfe9f2');
-      g.roundRect(-43, -17, 86, 34, 8); g.fill();
-      button.node.getComponentInChildren(Label)!.color = selected ? Color.WHITE : new Color('#354d68');
-    });
+    this.preferredColor = local?.preferredColor ?? null;
+    this.setText(this.preferenceLabel, `期望阵营：${this.preferredColor ? this.colorName(this.preferredColor) : '不限'}　▾`);
   }
 
   private setScreen(screen: Screen): void {
+    if (screen !== 'ROOM') { this.preferenceMenu?.destroy(); this.preferenceMenu = null; }
     this.currentScreen = screen;
     this.matchHud?.setVisible(screen === 'GAME');
     if (screen !== 'HOME') this.closeAccountDrawer();
@@ -398,16 +396,29 @@ export class GameUI extends Component {
     this.roomPlayersLabel = this.addLabel(root, 'RoomPlayers', '', new Vec3(0, layout.playersY + 12, 0), 640, layout.portrait ? 154 : 110, layout.portrait ? 18 : 16, new Color(37, 57, 85));
     this.roomNoticeLabel = this.addLabel(root, 'RoomNotice', '', new Vec3(0, layout.noticeY, 0), 600, 36, layout.portrait ? 19 : 17, new Color(76, 105, 140));
     const pickerY = layout.portrait ? layout.noticeY + 54 : view.getVisibleSize().height < 600 ? -47 : -44;
-    const preferences: Array<PlayerColor | null> = [null, 'RED', 'YELLOW', 'BLUE', 'GREEN'];
-    preferences.forEach((color, index) => {
-      const node = new Node(`Preference-${color ?? 'ANY'}`); node.setParent(root); node.layer = Layers.Enum.UI_2D;
-      node.addComponent(UITransform).setContentSize(86, 34); node.setPosition((index - 2) * 96, pickerY); node.addComponent(Graphics);
-      this.addLabel(node, 'PreferenceText', color ? `期望${this.colorName(color)}` : '颜色不限', Vec3.ZERO, 84, 30, 14, new Color('#354d68'));
-      const button = node.addComponent(Button); this.preferenceButtons.set(color ?? 'ANY', button);
-      node.on(Node.EventType.TOUCH_END, () => { if (button.interactable) this.node.emit('color-preference', color); });
-    });
+    this.createModalButton(root, 'PreferenceDropdown', new Vec3(0, pickerY), new Color('#dfe9f2'), () => this.togglePreferenceMenu(root, pickerY), 260, 38, 15);
+    this.preferenceLabel = root.getChildByName('PreferenceDropdownButton')!.getComponentInChildren(Label)!;
+    this.preferenceLabel.color = new Color('#354d68');
+    this.preferenceLabel.string = '期望阵营：不限　▾';
     this.addLabel(root, 'RoomChatHint', '同色意愿抽签决定；调整意愿后请重新准备', new Vec3(0, layout.hintY, 0), 600, 24, 13, new Color(106, 126, 148));
     root.setSiblingIndex(0); this.roomRoot = root;
+  }
+
+  private togglePreferenceMenu(parent: Node, y: number): void {
+    if (this.preferenceMenu?.isValid) { this.preferenceMenu.destroy(); this.preferenceMenu = null; return; }
+    const overlay = new Node('PreferenceOverlay'); overlay.setParent(this.getRuntimeRoot()); overlay.layer = Layers.Enum.UI_2D;
+    overlay.addComponent(UITransform).setContentSize(view.getVisibleSize()); overlay.addComponent(BlockInputEvents);
+    overlay.on(Node.EventType.TOUCH_END, () => { this.preferenceMenu?.destroy(); this.preferenceMenu = null; });
+    const menu = this.createCard(overlay, 'PreferenceMenu', 260, 204, new Color('#edf4fa'), new Color('#aac6df'));
+    menu.setPosition(0, y - 125);
+    this.preferenceMenu = overlay;
+    const preferences: Array<PlayerColor | null> = [null, 'RED', 'YELLOW', 'BLUE', 'GREEN'];
+    preferences.forEach((color, index) => {
+      this.createModalButton(menu, color ? this.colorName(color) : '不限', new Vec3(0, 80 - index * 40),
+        new Color(color === this.preferredColor ? '#287bc0' : '#547797'), () => {
+          this.preferenceMenu?.destroy(); this.preferenceMenu = null; this.node.emit('color-preference', color);
+        }, 246, 36, 16);
+    });
   }
 
   /** Keep the home-card proportions intentional on both the original desktop

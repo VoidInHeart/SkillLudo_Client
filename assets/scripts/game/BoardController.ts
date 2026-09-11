@@ -101,6 +101,7 @@ export class BoardController extends Component {
       graphics.strokeColor = Color.WHITE; graphics.lineWidth = 1; graphics.circle(0, 0, 20); graphics.stroke();
     }
   }
+  public setActionPreview(previews: Record<string, MoveResult>): void { this.previews = previews; this.clearMovePreview(); }
   public showMovePreview(pieceId: string, dice: number): MovePreview | null {
     const piece = this.pieces.get(pieceId), result = this.previews[pieceId];
     if (!piece || !result || !this.movable.has(pieceId)) return null;

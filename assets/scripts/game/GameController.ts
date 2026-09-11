@@ -5,6 +5,7 @@ import { ResponsiveCanvas } from './ResponsiveCanvas';
 import { BoardController } from './BoardController';
 import { NetworkManager } from '../network/NetworkManager';
 import { resolveServerUrl } from '../network/ServerEndpoint';
+import { ActionSelection } from './ActionSelection';
 import type { ActiveGameSummary, BoardCalibrationData, BoardCalibrationOpen, ChatEntry, ErrorPayload, GameSnapshot, MoveResult, ServerMessage } from '../protocol/GameProtocol';
 import { GameUI, type AccountActionData } from '../ui/GameUI';
 
@@ -26,6 +27,7 @@ export class GameController extends Component {
   @property(GameUI) public gameUI: GameUI | null = null;
 
   private presentationBusy = false;
+  private readonly selection = new ActionSelection();
   private commandPending = false;
   private appHidden = false;
   private responsiveCanvas: ResponsiveCanvas | null = null;
@@ -137,23 +139,24 @@ export class GameController extends Component {
     const pieceId = typeof pieceOrEvent === 'string' ? pieceOrEvent : customPieceId;
     const snapshot = this.snapshot;
     const localPlayer = snapshot?.players.find((player) => player.id === this.playerId);
-    if (!snapshot || this.presentationBusy || this.commandPending || localPlayer?.aiControlled || snapshot.currentPlayerId !== this.playerId || snapshot.phase !== 'WAIT_SELECT_PIECE' || snapshot.movablePieceIds.indexOf(pieceId) < 0 || snapshot.dice === null) return;
-    const preview = this.boardController?.showMovePreview(pieceId, snapshot.dice);
-    if (!preview) return;
-    const confirm = () => {
-      const latest = this.snapshot;
-      if (!latest || this.commandPending || this.presentationBusy || latest.rollId !== snapshot.rollId || latest.roomId !== snapshot.roomId || latest.players.find((player) => player.id === this.playerId)?.aiControlled || latest.currentPlayerId !== this.playerId || latest.phase !== 'WAIT_SELECT_PIECE' || latest.movablePieceIds.indexOf(pieceId) < 0) {
-        this.boardController?.clearMovePreview();
-        return;
-      }
-      this.boardController?.clearMovePreview();
-      this.commandPending = true;
-      this.gameUI?.setDiceRequestPending();
-      this.send('SELECT_PIECE', { roomId: this.roomId, pieceId, rollId: latest.rollId });
-    };
-    const cancel = () => this.boardController?.clearMovePreview();
-    if (this.gameUI) this.gameUI.showMoveConfirmation(preview, confirm, cancel);
-    else confirm();
+    if (!snapshot || this.presentationBusy || this.commandPending || localPlayer?.aiControlled || snapshot.currentPlayerId !== this.playerId) return;
+    if (snapshot.phase === 'WAIT_SELECT_DIE') { this.commitSelection(pieceId); return; }
+    // A trustee may have reached the legacy piece phase before manual control resumed.
+    if (snapshot.phase !== 'WAIT_SELECT_PIECE' || !snapshot.movablePieceIds.includes(pieceId)) return;
+    this.commandPending = true;
+    this.gameUI?.setDiceRequestPending();
+    this.send('SELECT_PIECE', { roomId: this.roomId, pieceId, rollId: snapshot.rollId });
+  }
+
+  private commitSelection(pieceId?: string): void {
+    const state = this.snapshot;
+    if (!state || this.commandPending || this.presentationBusy) return;
+    const option = this.selection.current(state, this.playerId);
+    if (!option || (pieceId ? !option.movablePieceIds.includes(pieceId) : option.movablePieceIds.length > 0)) return;
+    this.commandPending = true;
+    this.gameUI?.setDiceRequestPending();
+    this.send('COMMIT_MOVE', { roomId: state.roomId, rollId: state.rollId, optionId: option.id, ...(pieceId ? { pieceId } : {}) });
+    this.refreshMovable();
   }
 
   private handleUiAction(action: string): void {
@@ -168,7 +171,7 @@ export class GameController extends Component {
       case 'LEAVE_ROOM': this.onClickLeaveRoom(); break;
       case 'SELECT_DIE_0': this.onClickDie(0); break;
       case 'SELECT_DIE_1': this.onClickDie(1); break;
-      case 'ROLL_DICE': this.onClickRollDice(); break;
+      case 'ROLL_DICE': if (this.snapshot?.phase === 'WAIT_SELECT_DIE') this.commitSelection(); else this.onClickRollDice(); break;
       case 'DEBUG_DICE': this.gameUI?.showDebugDiceDialog(); break;
       case 'CALIBRATE': this.send('CALIBRATION_OPEN', {}); break;
       case 'AI_TAKEOVER': {
@@ -344,6 +347,7 @@ export class GameController extends Component {
     this.boardController?.setLocalColor(inGame ? snapshot.players.find((p) => p.id === this.playerId)?.color : undefined);
     this.boardController?.applySnapshot(snapshot);
     this.gameUI?.render(snapshot, this.playerId);
+    this.refreshMovable();
   }
   private applySnapshotUnlessExited(snapshot: GameSnapshot): void {
     if (snapshot.roomId === this.exitedGameRoomId) {
@@ -361,20 +365,28 @@ export class GameController extends Component {
     const state = this.snapshot;
     if (!state || this.commandPending || this.presentationBusy || state.currentPlayerId !== this.playerId || state.phase !== 'WAIT_SELECT_DIE'
       || state.players.find((p) => p.id === this.playerId)?.aiControlled || (index !== 0 && index !== 1)) return;
-    this.commandPending = true;
-    this.gameUI?.setDiceRequestPending();
-    this.send('SELECT_DIE', { roomId: state.roomId, dieIndex: index, rollId: state.rollId });
+    const option = state.actionOptions?.find((option) => option.dieIndex === index);
+    if (option) this.selectOption(option.id);
+  }
+  public selectOption(optionId: string): void {
+    if (!this.snapshot || this.commandPending || this.presentationBusy) return;
+    if (this.selection.choose(this.snapshot, this.playerId, optionId)) this.refreshMovable();
   }
   private onColorPreference(color: PlayerColor | null): void {
     if (this.snapshot?.roomStatus === 'WAITING') this.send('SET_COLOR_PREFERENCE', { roomId: this.roomId, color });
   }
   private refreshMovable(): void {
     const state = this.snapshot;
+    const option = state ? this.selection.current(state, this.playerId) : null;
     const allowed = !this.presentationBusy && !this.commandPending && state?.currentPlayerId === this.playerId
-      && !state.players.find((p) => p.id === this.playerId)?.aiControlled && state.phase === 'WAIT_SELECT_PIECE';
-    this.boardController?.setMovablePieces(allowed ? state!.movablePieceIds : []);
+      && !state.players.find((p) => p.id === this.playerId)?.aiControlled;
+    const ids = option?.movablePieceIds ?? (state?.phase === 'WAIT_SELECT_PIECE' ? state.movablePieceIds : []);
+    this.boardController?.setActionPreview(option?.movePreviews ?? state?.movePreviews ?? {});
+    this.boardController?.setMovablePieces(allowed ? ids : []);
+    this.gameUI?.setSelectedOption(option);
   }
   private resetPresentation(): void {
+    this.selection.clear();
     this.boardController?.cancelAnimations();
     this.presentation.reset();
     this.commandPending = false;
