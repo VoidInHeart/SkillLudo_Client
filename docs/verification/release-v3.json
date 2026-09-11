@@ -1,0 +1,16 @@
+{
+  "date": "2026-09-11",
+  "url": "http://81.70.145.148",
+  "clientRevision": "3aa8a94eb4059a1912dba2f89a58e6394f48529b",
+  "serverRevision": "f430d83830980d176d0d5f856182a9f943d7f937",
+  "webRelease": "3aa8a94eb405-1789105878006",
+  "sourceDirtyAtPackaging": false,
+  "clientCiRun": 34567602979,
+  "serverCiRun": 34567642123,
+  "automatedTests": { "client": 19, "server": 54, "total": 73 },
+  "webBuild": "passed",
+  "wechatBuild": "passed",
+  "wechatBytes": 3556038,
+  "wechatDeviceTested": false,
+  "newCapacityTested": false
+}
