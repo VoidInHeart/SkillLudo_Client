@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "kind": "authority-calculated local presentation fixtures with intercepted commands",
+  "checks": [
+    "British sum preview is reversible; two enemy/friendly pointer targets; detour swap lands at calibrated centres",
+    "Chinese energy diamonds, +/-2 options, preview then atomic move, cooldown disabled",
+    "French countdown and selection pointer input; lock badge stays at the capture cell",
+    "American 52 rotated cell targets, five-cell blast, Chinese capture returns to takeoff",
+    "Paris unlock animation and pending rescue count",
+    "AI optional skills disabled; portrait modal reflows"
+  ],
+  "errors": []
+}

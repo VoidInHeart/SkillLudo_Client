@@ -1,6 +1,8 @@
 # SkillLudo Client
 
-Cocos Creator **3.8.8**，2D 矢量棋盘 + 真实 3D 飞机/骰子。权威规则和随机数由相邻仓库 `../SkillLudo_Server` 提供，当前协议版本 **2**，必须配套更新。
+Cocos Creator **3.8.8**，2D 矢量棋盘 + 真实 3D 飞机/骰子。权威规则和随机数由相邻仓库 `../SkillLudo_Server` 提供，当前协议版本 **3**，必须配套更新。
+
+房间通过下拉框选择期望阵营：英国（红）、法国（黄）、中国（蓝）、美国（绿）。双骰可反复预选，立即高亮可动飞机，点击飞机同时提交点数与目标；无可动飞机可换点数或确认跳过。登录页/大厅可查看技能图鉴，对局中通过“阵营技能 / 图鉴”改点、选目标或强化。AI 仅触发被动，已有强制反向调整仍需执行。
 
 ## 开发与构建
 
@@ -29,6 +31,8 @@ npm run preview:build
 | `BoardController / MotionTimeline` | 逐格移动、跳跃、虫洞、吃子、终点返航；可取消动画 |
 | `GameController / PresentationQueue / NetworkManager` | 命令、顺序播放消息、快照、输入锁、断线恢复 |
 | `GameUI / MatchHud` | 账号/房间与对局操作界面 |
+| `SkillDialogs / ActionSelection` | 图鉴、改点预览、受击选择、目标确认与可撤销选骰 |
+| `SkillCatalog / GameProtocol / PathData` | 服务端生成的技能文案、协议和公共航线映射 |
 | `ResponsiveCanvas / GameViewport` | 横竖屏等比画布、棋盘和操作区布局 |
 
 新默认棋盘由代码绘制，原 PNG `assets/resources/textures/ludo-classic-board-cropped.png` 保留作参照。复刻图与逐格标记见 `docs/board/classic-board-v2.svg`、`anchors-review.svg`、`default-positions.json`。全部默认格心来自同一几何数据，普通落子无额外 XY 偏移，叠子使用高度区分。
@@ -44,7 +48,9 @@ npm run verify:fixtures
 npm run verify:browser
 ```
 
-浏览器脚本使用 Playwright 和本机 Chrome。可通过 `PLAYWRIGHT_PATH`、`SKILLLUDO_BROWSER` 指定路径；本机 Codex 依赖也可自动发现。`verify:browser` 只在测试浏览器中显式连接 3101（可用 `SKILLLUDO_TEST_SERVER` 覆盖），并设置本地游客 UI；这不修改正式认证流程。检查包括真实点击选骰/选飞机/确认移动、重连、视角、特殊动作、格心、旋转校准和横竖屏。`docs/verification/README.md` 区分真实联机和本地表现夹具。`verify:published` 单独验收公网网页和实际自动选址，不使用端口替换。
+浏览器脚本使用 Playwright 和本机 Chrome。可通过 `PLAYWRIGHT_PATH`、`SKILLLUDO_BROWSER` 指定路径；本机 Codex 依赖也可自动发现。`verify:browser` 只在测试浏览器中显式连接 3101（可用 `SKILLLUDO_TEST_SERVER` 覆盖），并设置本地游客 UI；这不修改正式认证流程。检查包括真实点击下拉框/图鉴/双骰反复预选/飞机一次提交、重连、视角、特殊动作、格心、旋转校准和横竖屏。`docs/verification/README.md` 区分真实联机和本地表现夹具。`verify:published` 单独验收公网网页和实际自动选址，不使用端口替换。
+
+技能表现回归：先在服务端运行 `npm run verify:skill-fixtures`，再在本仓运行 `npm run verify:skills`。五组服务器生成的场景验证英国换位/合计、中国改点/能量/CD、法国响应/锁标、美国轰炸/中国回起飞处、巴黎救援，以及托管禁用和竖屏；该脚本隔离网络并检查发出的命令，不等同于真实网络回合。真实 WebSocket 的过期请求、法国重连/超时/退出/托管由服务端 `SkillNetwork.test.ts` 覆盖。
 
 ## 微信小游戏
 
@@ -54,7 +60,7 @@ npm run build:wechat
 npm run verify:wechat
 ```
 
-导入微信开发者工具的目录为 `build/wechatgame`。未设置 AppID 时用 `touristappid` 生成验证包；最新验证产物为 30 个文件、3,531,517 字节（约 3.53 MB），静态预算检查通过。保持横屏、真实 3D 网格与程序动画，不依赖 3D 物理或额外 WASM。原图仍在包内。
+导入微信开发者工具的目录为 `build/wechatgame`。未设置 AppID 时用 `touristappid` 生成验证包；2026-09-11 验证产物为 30 个文件、3,556,038 字节（约 3.56 MB），低于 4 MiB 静态预算。保持横屏、真实 3D 网格与程序动画，不依赖 3D 物理或额外 WASM。原图仍在包内。
 
 这次已完成 Creator 构建和静态包体检查，尚未完成微信真机运行、上传或审核。上线配置还需真实 AppID、客户端 WSS 地址、微信后台 socket 合法域名、服务端微信登录凭证校验；生产环境关闭调试骰子。微信端内存、帧率、RenderTexture、切后台恢复及刘海/胶囊安全区须在真机验收。
 

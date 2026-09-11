@@ -22,15 +22,16 @@ async function openPlayer(name) {
   page.on('pageerror', record);
   page.on('console', (message) => { if (message.type() === 'error') record(message.text()); });
   await page.goto(url);
-  await page.waitForTimeout(2500);
-  await page.waitForFunction(async () => {
-    try {
-      const cc = await System.import('cc');
-      const controller = cc.director.getScene()?.getChildByName('Canvas')?.getChildByName('GameSystem')?.getComponent('GameController');
-      if (!controller?.playerId) return false;
-      return true;
-    } catch { return false; }
-  }, { timeout: 30000 });
+  let ready = false;
+  const deadline = Date.now() + 60000;
+  while (!ready && Date.now() < deadline) {
+    ready = await page.evaluate(async () => {
+      try { const cc = await System.import('cc'); return !!cc.director.getScene()?.getChildByName('Canvas')?.getChildByName('GameSystem')?.getComponent('GameController')?.playerId; }
+      catch { return false; }
+    });
+    if (!ready) await page.waitForTimeout(250);
+  }
+  assert.ok(ready, 'Cocos and guest authentication must finish loading');
   await page.evaluate(async (name) => {
     window.testCC = await System.import('cc');
     window.testGame = testCC.director.getScene().getChildByName('Canvas').getChildByName('GameSystem').getComponent('GameController');
@@ -59,13 +60,20 @@ try {
     await browser.close(); process.exit(0);
   }
   await a.screenshot({ path: `${output}/home.png` });
+  await clickAt(a, () => testPoint(testFind(testGame.gameUI.homeRoot, '技能图鉴Button')));
+  await a.waitForFunction(() => testGame.gameUI.skills?.mode === 'book');
+  await clickAt(a, () => testPoint(testFind(testGame.gameUI.skills.root, 'Faction-BLUE')));
+  await a.screenshot({ path: `${output}/skill-encyclopedia.png` });
+  await clickAt(a, () => testPoint(testFind(testGame.gameUI.skills.root, 'CloseSkills')));
   const b = await openPlayer('飞行员乙');
   await a.evaluate(() => testGame.onClickCreateRoom());
   await a.waitForFunction(() => testGame.snapshot?.roomStatus === 'WAITING');
   const roomId = await a.evaluate(() => testGame.snapshot.roomId);
   await b.evaluate((room) => testGame.onClickJoinRoom(room), roomId);
   await b.waitForFunction(() => testGame.snapshot?.players.length === 2);
-  await a.evaluate(() => testGame.gameUI.node.emit('color-preference', 'GREEN'));
+  await clickAt(a, () => testPoint(testFind(testGame.gameUI.roomRoot, 'PreferenceDropdownButton')));
+  await a.waitForFunction(() => testGame.gameUI.preferenceMenu?.isValid);
+  await clickAt(a, () => testPoint(testFind(testGame.gameUI.preferenceMenu, '美国Button')));
   await b.evaluate(() => testGame.gameUI.node.emit('color-preference', 'BLUE'));
   await a.waitForFunction(() => testGame.snapshot.players[1].preferredColor === 'BLUE');
   await a.screenshot({ path: `${output}/room-preferences.png` });
@@ -87,12 +95,16 @@ try {
   assert.deepEqual(await a.evaluate(() => ({ rollId: testGame.snapshot.rollId, pair: testGame.snapshot.diceChoices })), beforeReconnect);
   assert.equal(await a.evaluate(() => testGame.boardController.dice.actors.every((actor) => actor.model.active)), true);
   // Select the physical die and plane through the actual Canvas hit regions.
+  const piecesBefore = await a.evaluate(() => testGame.snapshot.pieces);
   await clickAt(a, () => testPoint(testGame.boardController.dice.actors[0].hit));
-  await settled(a, 'WAIT_SELECT_PIECE');
-  await clickAt(a, () => testPoint(testGame.boardController.actors.get(testGame.snapshot.movablePieceIds[0]).hit));
-  await a.waitForFunction(() => testGame.gameUI.moveConfirmModal?.isValid);
-  await a.screenshot({ path: `${output}/move-confirmation.png` });
-  await clickAt(a, () => testPoint(testFind(testGame.gameUI.moveConfirmModal, '确认移动Button')));
+  await a.waitForFunction(() => testGame.selection.current(testGame.snapshot, testGame.playerId)?.dieIndex === 0);
+  await clickAt(a, () => testPoint(testGame.boardController.dice.actors[1].hit));
+  await a.waitForFunction(() => testGame.selection.current(testGame.snapshot, testGame.playerId)?.dieIndex === 1);
+  assert.equal(await a.evaluate(() => testGame.snapshot.phase), 'WAIT_SELECT_DIE');
+  assert.deepEqual(await a.evaluate(() => testGame.snapshot.pieces), piecesBefore);
+  await clickAt(a, () => testPoint(testGame.boardController.dice.actors[0].hit));
+  await a.screenshot({ path: `${output}/move-preview.png` });
+  await clickAt(a, () => testPoint(testGame.boardController.actors.get(testGame.selection.current(testGame.snapshot, testGame.playerId).movablePieceIds[0]).hit));
   await settled(a, 'WAIT_ROLL');
   await a.screenshot({ path: `${output}/after-takeoff.png` });
   const state = await a.evaluate(() => ({ pieces: testGame.snapshot.pieces, render: { actors: testGame.boardController.actors.size, meshVertices: testGame.boardController.scene3D.meshes.die().struct.vertexBundles[0].view.count }, phase: testGame.snapshot.phase, room: testGame.snapshot.roomId }));
@@ -137,7 +149,7 @@ try {
   await a.waitForTimeout(500); await a.screenshot({ path: `${output}/game-portrait.png` });
   const portrait = await a.evaluate(() => ({ size: testCC.view.getVisibleSize(), scaleX: testCC.view.getScaleX(), scaleY: testCC.view.getScaleY(), hudX: testGame.gameUI.matchHud.root.position.x }));
   assert.ok(portrait.size.height > portrait.size.width && Math.abs(portrait.scaleX - portrait.scaleY) < 0.01 && portrait.hudX === 0, 'Portrait must reflow without stretching');
-  writeFileSync(`${output}/preview-result.json`, JSON.stringify({ errors, checks: ['real socket color preferences', 'two local perspectives', 'physical die and plane pointer input', 'move confirmation pointer input', 'pending dice reconnect', 'four authority-calculated motion fixtures', 'exact motion endpoints', 'rotated manual calibration drag and inverse', 'portrait resize'], state }, null, 2));
+  writeFileSync(`${output}/preview-result.json`, JSON.stringify({ errors, checks: ['encyclopedia pointer navigation', 'real socket faction dropdown', 'two local perspectives', 'physical die and plane pointer input', 'reversible dice preview then atomic commit', 'pending dice reconnect', 'four authority-calculated motion fixtures', 'exact motion endpoints', 'rotated manual calibration drag and inverse', 'portrait resize'], state }, null, 2));
   if (errors.length) throw new Error(errors.join('\n'));
   console.log(JSON.stringify({ status: 'passed', screenshots: 14, ...state.render }));
 } catch (error) {

@@ -74,6 +74,12 @@ try {
   assert.equal(await active.evaluate(() => testGame.snapshot.diceChoices.length), 2);
   await active.screenshot({ path: `${output}/published-game.png` });
   await active.evaluate(() => testGame.onClickDie(0));
+  assert.equal(await active.evaluate(() => testGame.snapshot.phase), 'WAIT_SELECT_DIE');
+  await active.evaluate(() => {
+    const option = testGame.selection.current(testGame.snapshot, testGame.playerId);
+    if (option.movablePieceIds.length) testGame.onClickPiece(option.movablePieceIds[0]);
+    else testGame.gameUI.node.emit('ui-action', 'ROLL_DICE');
+  });
   await active.waitForFunction(() => testGame.snapshot.phase !== 'WAIT_SELECT_DIE' && !testGame.presentationBusy);
   assert.ok(sockets.length >= 2);
   assert.ok(sockets.every((socket) => socket === endpoint), JSON.stringify(sockets));

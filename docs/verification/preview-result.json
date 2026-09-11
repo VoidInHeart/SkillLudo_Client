@@ -1,10 +1,11 @@
 {
   "errors": [],
   "checks": [
-    "real socket color preferences",
+    "encyclopedia pointer navigation",
+    "real socket faction dropdown",
     "two local perspectives",
     "physical die and plane pointer input",
-    "move confirmation pointer input",
+    "reversible dice preview then atomic commit",
     "pending dice reconnect",
     "four authority-calculated motion fixtures",
     "exact motion endpoints",
@@ -15,113 +16,115 @@
     "pieces": [
       {
         "id": "green-1",
-        "playerId": "p_8cfab713-926f-44b7-97ed-8d6170870d8a",
+        "playerId": "p_c1e9a6f2-5829-418e-9608-080b306683e5",
         "color": "GREEN",
         "state": "MAIN_PATH",
-        "progress": 0
+        "progress": 0,
+        "locked": false,
+        "detour": false
       },
       {
         "id": "green-2",
-        "playerId": "p_8cfab713-926f-44b7-97ed-8d6170870d8a",
+        "playerId": "p_c1e9a6f2-5829-418e-9608-080b306683e5",
         "color": "GREEN",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "green-3",
-        "playerId": "p_8cfab713-926f-44b7-97ed-8d6170870d8a",
+        "playerId": "p_c1e9a6f2-5829-418e-9608-080b306683e5",
         "color": "GREEN",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "green-4",
-        "playerId": "p_8cfab713-926f-44b7-97ed-8d6170870d8a",
+        "playerId": "p_c1e9a6f2-5829-418e-9608-080b306683e5",
         "color": "GREEN",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "blue-1",
-        "playerId": "p_1f16fd3f-507c-483c-b0a7-49bce945bab5",
+        "playerId": "p_c223d8e3-aee0-40f0-882b-cbe69fcfdd1b",
         "color": "BLUE",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "blue-2",
-        "playerId": "p_1f16fd3f-507c-483c-b0a7-49bce945bab5",
+        "playerId": "p_c223d8e3-aee0-40f0-882b-cbe69fcfdd1b",
         "color": "BLUE",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "blue-3",
-        "playerId": "p_1f16fd3f-507c-483c-b0a7-49bce945bab5",
+        "playerId": "p_c223d8e3-aee0-40f0-882b-cbe69fcfdd1b",
         "color": "BLUE",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "blue-4",
-        "playerId": "p_1f16fd3f-507c-483c-b0a7-49bce945bab5",
+        "playerId": "p_c223d8e3-aee0-40f0-882b-cbe69fcfdd1b",
         "color": "BLUE",
         "state": "AIRPORT",
         "progress": -1
       },
       {
-        "id": "red-1",
-        "playerId": "ai_856206_3",
-        "color": "RED",
-        "state": "AIRPORT",
-        "progress": -1
-      },
-      {
-        "id": "red-2",
-        "playerId": "ai_856206_3",
-        "color": "RED",
-        "state": "AIRPORT",
-        "progress": -1
-      },
-      {
-        "id": "red-3",
-        "playerId": "ai_856206_3",
-        "color": "RED",
-        "state": "AIRPORT",
-        "progress": -1
-      },
-      {
-        "id": "red-4",
-        "playerId": "ai_856206_3",
-        "color": "RED",
-        "state": "AIRPORT",
-        "progress": -1
-      },
-      {
         "id": "yellow-1",
-        "playerId": "ai_856206_4",
+        "playerId": "ai_858471_3",
         "color": "YELLOW",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "yellow-2",
-        "playerId": "ai_856206_4",
+        "playerId": "ai_858471_3",
         "color": "YELLOW",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "yellow-3",
-        "playerId": "ai_856206_4",
+        "playerId": "ai_858471_3",
         "color": "YELLOW",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "yellow-4",
-        "playerId": "ai_856206_4",
+        "playerId": "ai_858471_3",
         "color": "YELLOW",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "red-1",
+        "playerId": "ai_858471_4",
+        "color": "RED",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "red-2",
+        "playerId": "ai_858471_4",
+        "color": "RED",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "red-3",
+        "playerId": "ai_858471_4",
+        "color": "RED",
+        "state": "AIRPORT",
+        "progress": -1
+      },
+      {
+        "id": "red-4",
+        "playerId": "ai_858471_4",
+        "color": "RED",
         "state": "AIRPORT",
         "progress": -1
       }
@@ -131,6 +134,6 @@
       "meshVertices": 468
     },
     "phase": "WAIT_ROLL",
-    "room": "856206"
+    "room": "858471"
   }
 }
