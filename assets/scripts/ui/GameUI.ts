@@ -547,7 +547,7 @@ export class GameUI extends Component {
     graphics.stroke();
     this.addLabel(root, 'ActiveGameTitle', '未结束的对局', new Vec3(0, 38, 0), 300, 26, 18, new Color(24, 70, 137));
     const game = this.activeGames[0];
-    this.addLabel(root, 'ActiveGameInfo', `房间 ${game.roomId} · ${this.colorName(game.color)} · 第${game.turnNumber}回合`, new Vec3(-35, 4, 0), 235, 28, 14, new Color(58, 79, 108));
+    this.addLabel(root, 'ActiveGameInfo', `房间 ${game.roomId} · ${game.spectating || !game.color ? '观战' : this.colorName(game.color)} · 第${game.turnNumber}回合`, new Vec3(-35, 4, 0), 235, 28, 14, new Color(58, 79, 108));
     this.createModalButton(root, '重连入局', new Vec3(92, -31, 0), new Color(40, 117, 214), () => this.node.emit('rejoin-game', game.roomId), 112, 34, 14);
   }
 
