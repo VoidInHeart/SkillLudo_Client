@@ -1,7 +1,6 @@
 import { BlockInputEvents, Button, Color, Graphics, Label, Layers, Node, UITransform, view } from 'cc';
 import type { GameSnapshot, PlayerColor } from '../protocol/GameProtocol';
-import { FACTION_NAMES, SKILL_CATALOG, SKILL_KIND_NAMES } from '../game/SkillCatalog';
-import { BOARD_COLORS } from '../game/BoardGeometry';
+import { describeSkill, FACTION_NAMES, SKILL_CATALOG, SKILL_KIND_NAMES } from '../game/SkillCatalog';
 
 export type SkillInput = { type: 'cast'; skillId: string; targetPieceIds?: string[]; targetCell?: string; reactionId?: number }
   | { type: 'option'; optionId: string } | { type: 'target'; skillId: 'uk-sun' | 'us-bomb' };
@@ -76,8 +75,9 @@ export class SkillDialogs {
     const owner = this.inMatch ? this.snapshot?.players.find((p) => p.color === this.color) : undefined;
     skills.forEach((skill, index) => {
       const state = this.snapshot?.skills.find((s) => s.playerId === owner?.id && s.skillId === skill.id);
-      const dim = !!state && (state.cooldownTurns > 0 || state.charges === 0 || (['cn-scale', 'uk-industry'].includes(skill.id) && !state.awakened));
-      this.button(card, `Skill-${skill.id}`, skill.name,
+      const dim = !!state && ((state.cooldownTurns > 0 && !state.available) || state.charges === 0 || (['cn-scale', 'uk-industry'].includes(skill.id) && !state.awakened));
+      const progress = skill.kind === 'AWAKENING' && state ? ` (${state.progress ?? 0}/${skill.id === 'cn-roar' ? 100 : 2})` : '';
+      this.button(card, `Skill-${skill.id}`, skill.name + progress,
       (index - (skills.length - 1) / 2) * (width - 32) / skills.length, top - 146, (width - 44) / skills.length,
       () => { this.skillIndex = index; this.renderBook(); }, true, this.skillIndex === index, 42, dim);
     });
@@ -85,12 +85,14 @@ export class SkillDialogs {
     const color = new Color(({ RED: '#ff938c', YELLOW: '#ffe08a', BLUE: '#79b8ff', GREEN: '#a2e58e' })[this.color]);
     this.label(card, 'SkillKind', SKILL_KIND_NAMES[definition.kind], 0, top - 196, width - 40, 28, 16, color);
     const descriptionHeight = Math.max(80, height - 370);
-    this.label(card, 'SkillDescription', definition.description, 0, top - 222 - descriptionHeight / 2, width - 52, descriptionHeight, 20);
+    this.label(card, 'SkillDescription', describeSkill(definition.id, runtime), 0, top - 222 - descriptionHeight / 2, width - 52, descriptionHeight, 20);
     let status = runtime ? runtime.reason || (runtime.awakened ? '已觉醒' : runtime.available ? '可以发动' : '自动生效 / 等待条件') : '进入对局后显示技能状态';
     if (runtime && definition.kind === 'LIMITED') status = runtime.charges > 0 ? `剩余 1 次 · ${status}` : '本局已使用';
     if (runtime && definition.kind === 'COOLDOWN' && runtime.cooldownTurns > 0) status = `冷却中 · 还需 ${runtime.cooldownTurns} 个己方正常回合`;
-    if (runtime && definition.kind === 'AWAKENING') status = runtime.awakened ? '已觉醒 · 永久生效' : `觉醒进度：${runtime.progress ?? 0}${definition.id === 'cn-roar' ? ' / 超过 50' : ' / 2 架'}`;
+    if (runtime && definition.kind === 'AWAKENING') status = runtime.awakened ? '已觉醒 · 永久生效' : `觉醒进度：${runtime.progress ?? 0}${definition.id === 'cn-roar' ? ' / 100（超过后觉醒）' : ' / 2 架'}`;
     if (runtime && definition.id === 'cn-scale' && runtime.forcedDelta) status += ` · 本次强制 ${runtime.forcedDelta > 0 ? '+' : ''}${runtime.forcedDelta}`;
+    if (runtime && definition.id === 'cn-scale' && runtime.storedCharge) status += ' · 已储备 1 次';
+    if (runtime && definition.id === 'cn-scale' && runtime.usedThisTurn) status = '本轮已使用（含储备），下轮再操作';
     if (runtime && definition.id === 'cn-grit') status = `${'◆'.repeat(runtime.energy ?? 0)}${'◇'.repeat(3 - (runtime.energy ?? 0))}  能量 · 强化 ${runtime.level ?? 0}/3`;
     this.label(card, 'SkillStatus', status, 0, -height / 2 + 114, width - 40, 42, 16,
       runtime?.available || runtime?.awakened ? color : new Color('#a4b8cc'));
@@ -111,7 +113,7 @@ export class SkillDialogs {
     const { card, width, height } = this.frame('选择改点方案');
     this.label(card, 'OptionsHint', '点选仅预览；点击高亮飞机后才消耗技能', 0, height / 2 - 78, width - 32, 38, 17);
     const rowHeight = Math.min(65, (height - 200) / Math.ceil(Math.max(1, options.length) / 2));
-    options.forEach((option, index) => this.button(card, `Option-${option.id}`, `${option.label} → ${option.dice} 步\n${option.movablePieceIds.length} 架可动`,
+    options.forEach((option, index) => this.button(card, `Option-${option.id}`, `${option.label}\n${option.movablePieceIds.length} 架可动`,
       (index % 2 === 0 ? -1 : 1) * width * .235, height / 2 - 136 - Math.floor(index / 2) * rowHeight, width * .44,
       () => { this.close(); this.emit({ type: 'option', optionId: option.id }); }, !this.busy, false, rowHeight - 8));
     this.button(card, 'BackToSkills', '返回图鉴', 0, -height / 2 + 45, 200, () => { this.mode = 'book'; this.renderBook(); });

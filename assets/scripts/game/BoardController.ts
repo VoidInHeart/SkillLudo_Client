@@ -170,6 +170,7 @@ export class BoardController extends Component {
       captured.add(id); captureTasks.push(this.capture(id, epoch, result.captureOutcomes?.find((outcome) => outcome.pieceId === id)));
     };
     for (const segment of result.segments) {
+      if (segment.kind === 'FLIGHT') for (const hit of result.captures) if (hit.atProgress === segment.fromProgress) capture(hit.pieceId);
       const steps = segment.kind === 'WALK' ? segment.path : [segment.toProgress];
       for (const progress of steps) {
         const destination = this.toView(BoardLayout.mainPathPosition(piece.color, progress, !!result.fromDetour && progress <= 0));
@@ -184,14 +185,11 @@ export class BoardController extends Component {
           const position = Vec3.lerp(new Vec3(), from, destination, u);
           this.scene3D.place(actor, position, Math.sin(Math.PI * t) * height);
           actor.model.setRotationFromEuler(12 + Math.sin(t * Math.PI * 2) * (flight ? 28 : 12), Math.sin(t * Math.PI) * 20, heading);
-          if (flight) for (const hit of result.captures) {
-            const fraction = (hit.atProgress - segment.fromProgress) / (segment.toProgress - segment.fromProgress);
-            if (fraction > 0 && fraction < 1 && u >= fraction) capture(hit.pieceId);
-          }
         });
         if (!completed || epoch !== this.epoch) return;
         current = destination;
       }
+      for (const hit of result.captures) if (hit.atProgress === segment.toProgress) capture(hit.pieceId);
     }
     for (const id of result.killedPieceIds) capture(id);
     if (result.reachedFinish) {
