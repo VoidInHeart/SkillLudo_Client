@@ -42,6 +42,7 @@ export class GameUI extends Component {
   private authRoot: Node | null = null;
   private authCard: Node | null = null;
   private authFormRoot: Node | null = null;
+  private readonly authForms = new Map<'LOGIN' | 'REGISTER', Node>();
   private authNoticeLabel: Label | null = null;
   private readonly authTabs = new Map<'LOGIN' | 'REGISTER', Node>();
   private authMode: 'LOGIN' | 'REGISTER' = 'LOGIN';
@@ -69,6 +70,8 @@ export class GameUI extends Component {
   private readonly actionButtons = new Map<string, Button>();
   private chatEntries: ChatEntry[] = [];
   private currentScreen: Screen = 'HOME';
+  private lastSnapshot: GameSnapshot | null = null;
+  private lobbySize = { width: 0, height: 0 };
   private roomOwnerId = '';
   private localPlayerId = '';
   private readonly playerColors = new Map<string, PlayerColor>();
@@ -78,9 +81,9 @@ export class GameUI extends Component {
     this.installWebInputStyle();
     if (!this.statusLabel || !this.roomLabel || !this.rollButton || !this.readyButton || !this.startButton) this.buildRuntimeUi();
     this.showAuthPage();
-    view.on('canvas-resize', this.resizeSkillButtons, this);
-    view.on('design-resolution-changed', this.resizeSkillButtons, this);
-    this.scheduleOnce(this.resizeSkillButtons, 0);
+    view.on('canvas-resize', this.scheduleResize, this);
+    view.on('design-resolution-changed', this.scheduleResize, this);
+    this.scheduleResize();
   }
 
   public showHome(): void { this.setScreen('HOME'); }
@@ -97,11 +100,42 @@ export class GameUI extends Component {
   }
   public onDestroy(): void {
     this.matchHud?.destroy(); this.skills?.destroy(); this.overlays?.destroy();
-    view.off('canvas-resize', this.resizeSkillButtons, this); view.off('design-resolution-changed', this.resizeSkillButtons, this);
+    view.off('canvas-resize', this.scheduleResize, this); view.off('design-resolution-changed', this.scheduleResize, this);
   }
-  private resizeSkillButtons(): void {
+  private scheduleResize(): void {
+    // Wait until both the screen adapter and ResponsiveCanvas have settled.
+    this.unschedule(this.resizeLobby);
+    this.scheduleOnce(this.resizeLobby, 0);
+  }
+  private resizeLobby(): void {
     const size = view.getVisibleSize();
-    for (const root of [this.homeRoot, this.authRoot]) root?.getChildByName('技能图鉴Button')?.setPosition(size.width / 2 - 90, size.height / 2 - 42);
+    if (!this.runtimeRoot || (Math.abs(size.width - this.lobbySize.width) < 0.1 && Math.abs(size.height - this.lobbySize.height) < 0.1)) return;
+    const focused = this.authFormRoot?.getComponentsInChildren(EditBox).find((input) => input.isFocused())?.node.name;
+    const authNotice = this.authNoticeLabel?.string ?? '';
+    const connection = this.homeConnectionLabel?.string ?? '';
+    this.closeAccountDrawer();
+    this.preferenceMenu?.destroy(); this.preferenceMenu = null;
+    // Preserve EditBox instances: Android's delayed keyboard scroll callback
+    // can still run after a rotation, and must not target a destroyed input.
+    for (const form of this.authForms.values()) form.removeFromParent();
+    for (const root of [this.homeRoot, this.authRoot, this.roomRoot]) {
+      root?.removeFromParent(); root?.destroy();
+    }
+    this.authTabs.clear();
+    for (const action of ['QUICK_MATCH', 'CREATE_ROOM', 'JOIN_ROOM', 'READY', 'START_GAME', 'CHAT', 'LEAVE_ROOM']) {
+      const button = this.actionButtons.get(action);
+      button?.node.removeFromParent(); button?.node.destroy(); this.actionButtons.delete(action);
+    }
+    this.runtimeRoot.getComponent(UITransform)!.setContentSize(size);
+    this.buildLobbyUi(size);
+    this.renderAuthForm(this.authMode);
+    for (const input of this.authFormRoot?.getComponentsInChildren(EditBox) ?? []) {
+      if (input.node.name === focused) this.scheduleOnce(() => { if (input.isValid && input.node.activeInHierarchy) input.focus(); });
+    }
+    this.setText(this.authNoticeLabel, authNotice);
+    this.setText(this.homeConnectionLabel, connection);
+    if (this.currentScreen === 'ROOM' && this.lastSnapshot) this.renderRoom(this.lastSnapshot, this.localPlayerId);
+    else this.setScreen(this.currentScreen);
   }
   public update(): void { this.skills?.update(); this.overlays?.update(); this.matchHud?.update(); }
   public setServerClock(now: () => number): void { this.serverNow = now; this.skills?.setClock(now); this.overlays?.setClock(now); }
@@ -136,6 +170,7 @@ export class GameUI extends Component {
   public setGameMode(inGame: boolean): void { this.setScreen(inGame ? 'GAME' : 'HOME'); }
 
   public render(snapshot: GameSnapshot, localPlayerId: string): void {
+    this.lastSnapshot = snapshot;
     this.requestPending = false;
     this.localPlayerId = localPlayerId;
     this.updatePlayerColors(snapshot.players);
@@ -343,14 +378,16 @@ export class GameUI extends Component {
 
   private buildRuntimeUi(): void {
     const size = view.getVisibleSize();
-    // The browser preview toolbar can make the available height substantially
-    // shorter than the project's design height. Keep the lobby usable in that
-    // compact viewport instead of letting the join controls fall below it.
-    const compact = size.height < 600;
+    this.buildLobbyUi(size);
+    this.matchHud = new MatchHud(this.getRuntimeRoot(), (action) => this.node.emit('ui-action', action));
+    this.showStatus('连接游戏服务器中…');
+  }
+
+  private buildLobbyUi(size: { width: number; height: number }): void {
+    this.lobbySize = { width: size.width, height: size.height };
     const home = this.getHomeLayout(size);
     const room = this.getRoomLayout(size);
     this.createHomeVisual(size); this.createAuthVisual(size); this.createRoomVisual(size);
-    this.matchHud = new MatchHud(this.getRuntimeRoot(), (action) => this.node.emit('ui-action', action));
     this.createActionButton('匹配未开放', 'QUICK_MATCH', new Vec3(0, home.quickY, 0), false, new Color(132, 144, 159), home.quickWidth, home.buttonHeight, home.buttonFont);
     this.createActionButton('创建房间', 'CREATE_ROOM', new Vec3(-home.columnX, home.actionY, 0), true, new Color(40, 117, 214), home.buttonWidth, home.buttonHeight, home.buttonFont);
     this.createActionButton('加入房间', 'JOIN_ROOM', new Vec3(home.columnX, home.actionY, 0), true, new Color(56, 117, 198), home.buttonWidth, home.buttonHeight, home.buttonFont);
@@ -359,7 +396,6 @@ export class GameUI extends Component {
     // Keep the two room-action rows on the exact same two-column grid.
     this.createActionButton('聊天', 'CHAT', new Vec3(-room.columnX, room.secondRowY, 0), true, new Color(120, 91, 177), room.buttonWidth, room.buttonHeight, room.buttonFont);
     this.createActionButton('离开房间', 'LEAVE_ROOM', new Vec3(room.columnX, room.secondRowY, 0), true, new Color(135, 83, 86), room.buttonWidth, room.buttonHeight, room.buttonFont);
-    this.showStatus('连接游戏服务器中…');
   }
 
   private createHomeVisual(size: { width: number; height: number }): void {
@@ -404,20 +440,33 @@ export class GameUI extends Component {
     this.authNoticeLabel = this.addLabel(card, 'AuthNotice', '', new Vec3(0, compact ? 101 : 128, 0), 470, 30, 15, new Color(98, 115, 140));
     this.createAuthTab(card, 'LOGIN', '登录', new Vec3(-58, compact ? 65 : 86, 0));
     this.createAuthTab(card, 'REGISTER', '注册', new Vec3(58, compact ? 65 : 86, 0));
-    const form = new Node('AuthForm'); form.setParent(card); form.layer = Layers.Enum.UI_2D; form.addComponent(UITransform).setContentSize(500, 260);
-    this.authRoot = root; this.authCard = card; this.authFormRoot = form;
+    this.authRoot = root; this.authCard = card;
+    for (const form of this.authForms.values()) form.setParent(card);
     this.createModalButton(root, '技能图鉴', new Vec3(size.width / 2 - 90, size.height / 2 - 42), new Color('#287bc0'), () => this.showSkills(), 136, 40, 18);
     this.updateAuthTabs();
     root.setSiblingIndex(0);
   }
 
   private renderAuthForm(mode: 'LOGIN' | 'REGISTER'): void {
-    const card = this.authCard; const form = this.authFormRoot;
-    if (!card || !form) return;
-    // Node.destroy() is deferred to the end of the frame. Detach old controls
-    // first so switching between 登录 / 注册 never briefly renders both forms.
-    form.children.slice().forEach((child) => { child.removeFromParent(); child.destroy(); });
+    const card = this.authCard;
+    if (!card) return;
+    for (const [formMode, form] of this.authForms) {
+      if (formMode !== mode) for (const input of form.getComponentsInChildren(EditBox)) if (input.isFocused()) input.blur();
+      form.active = formMode === mode;
+      form.getChildByName('RememberLoginToggle')?.emit('remember-changed');
+    }
     const compact = view.getVisibleSize().height < 600;
+    const existing = this.authForms.get(mode);
+    if (existing) {
+      this.authFormRoot = existing;
+      const positions: Record<string, number> = mode === 'LOGIN'
+        ? { LoginUsername: compact ? 17 : 28, LoginPassword: compact ? -40 : -32, RememberLoginToggle: compact ? -78 : -74, 登录账号Button: compact ? -132 : -124 }
+        : { RegisterUsername: compact ? 17 : 31, RegisterPassword: compact ? -40 : -26, RegisterNickname: compact ? -97 : -83, RememberLoginToggle: compact ? -130 : -125, 创建账号Button: compact ? -168 : -170 };
+      for (const [name, y] of Object.entries(positions)) existing.getChildByName(name)?.setPosition(0, y);
+      return;
+    }
+    const form = new Node(`AuthForm${mode}`); form.setParent(card); form.layer = Layers.Enum.UI_2D; form.addComponent(UITransform).setContentSize(500, 260);
+    this.authForms.set(mode, form); this.authFormRoot = form;
     const fieldWidth = 370;
     const submit = (type: 'LOGIN' | 'REGISTER', username: EditBox, password: EditBox, nickname?: EditBox): void => {
       const data: AccountActionData = { username: username.string.trim(), password: password.string, nickname: nickname?.string.trim() ?? '', rememberMe: this.rememberLogin };
@@ -623,7 +672,8 @@ export class GameUI extends Component {
   }
 
   private createActionButton(title: string, action: string, position: Vec3, enabled: boolean, color = new Color(40, 117, 214), width = 150, height = 52, fontSize = 18): Button {
-    const node = new Node(`${action}Button`); node.setParent(this.getRuntimeRoot()); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(width, height); node.setPosition(position);
+    const parent = ['QUICK_MATCH', 'CREATE_ROOM', 'JOIN_ROOM'].includes(action) ? this.homeRoot : this.roomRoot;
+    const node = new Node(`${action}Button`); node.setParent(parent ?? this.getRuntimeRoot()); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(width, height); node.setPosition(position);
     const graphics = node.addComponent(Graphics); graphics.fillColor = color; graphics.roundRect(-width / 2, -height / 2, width, height, 12); graphics.fill(); this.addLabel(node, `${action}Text`, title, Vec3.ZERO, width - 10, height - 8, fontSize, Color.WHITE);
     const button = node.addComponent(Button); button.interactable = enabled;
     node.on(Node.EventType.TOUCH_END, () => { if (button.interactable) this.node.emit('ui-action', action); });
@@ -671,7 +721,8 @@ export class GameUI extends Component {
       if (this.rememberLogin) { graphics.strokeColor = Color.WHITE; graphics.lineWidth = 2; graphics.moveTo(-126, -1); graphics.lineTo(-123, -5); graphics.lineTo(-116, 4); graphics.stroke(); }
       text.string = '自动登录（保存 30 天登录状态）';
     };
-    node.on(Node.EventType.TOUCH_END, () => { this.rememberLogin = !this.rememberLogin; redraw(); });
+    node.on('remember-changed', redraw);
+    node.on(Node.EventType.TOUCH_END, () => { this.rememberLogin = !this.rememberLogin; for (const form of this.authForms.values()) form.getChildByName('RememberLoginToggle')?.emit('remember-changed'); });
     redraw();
   }
   private createModalRoot(name: string): Node { const size = view.getVisibleSize(); const modal = new Node(name); modal.setParent(this.getRuntimeRoot()); modal.layer = Layers.Enum.UI_2D; modal.addComponent(UITransform).setContentSize(size); const graphics = modal.addComponent(Graphics); graphics.fillColor = new Color(8, 22, 46, 195); graphics.rect(-size.width / 2, -size.height / 2, size.width, size.height); graphics.fill(); modal.setSiblingIndex(this.getRuntimeRoot().children.length - 1); return modal; }

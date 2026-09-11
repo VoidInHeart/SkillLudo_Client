@@ -14,6 +14,8 @@ Cocos Creator **3.8.8**，2D 矢量棋盘 + 真实 3D 飞机/骰子。权威规�
 
 网页入口为 <http://81.70.145.148>。`npm run deploy:web` 可构建并发布到服务器，完整说明见 [Web 部署](docs/Web部署.md)。
 
+网页支持默认缩放下的高分屏及横竖屏切换；微信小游戏构建使用横屏。屏幕尺寸与点击坐标回归运行 `npm run verify:viewport`，详见 [屏幕适配与微信横屏](docs/屏幕适配与微信横屏.md)。
+
 ```powershell
 npm ci
 npm run check

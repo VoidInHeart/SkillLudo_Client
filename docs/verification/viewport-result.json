@@ -1,0 +1,531 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-09-11T17:02:36.901Z",
+  "url": "http://127.0.0.1:7459",
+  "errors": [],
+  "cases": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800,
+      "dpr": 1,
+      "status": "passed",
+      "initial": {
+        "window": [
+          1280,
+          800
+        ],
+        "dpr": 1,
+        "buffer": [
+          1280,
+          800
+        ],
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 800,
+          "top": 0,
+          "right": 1280,
+          "bottom": 800,
+          "left": 0
+        },
+        "visible": {
+          "width": 1152,
+          "height": 720
+        },
+        "lobby": {
+          "width": 1152,
+          "height": 720
+        },
+        "bounds": {
+          "AccountPageCard": {
+            "left": 328.88888888888886,
+            "right": 951.111111111111,
+            "top": 122.22222222222229,
+            "bottom": 677.7777777777778
+          },
+          "AuthBrand": {
+            "left": 546.6699981689453,
+            "right": 733.3300018310547,
+            "top": 148.42222222222233,
+            "bottom": 196.02222222222224
+          },
+          "LoginUsername": {
+            "left": 434.44444444444446,
+            "right": 845.5555555555554,
+            "top": 344.44444444444446,
+            "bottom": 393.33333333333337
+          },
+          "LoginPassword": {
+            "left": 434.44444444444446,
+            "right": 845.5555555555554,
+            "top": 411.11111111111114,
+            "bottom": 460
+          },
+          "登录账号Button": {
+            "left": 517.7777777777777,
+            "right": 762.2222222222222,
+            "top": 511.11111111111114,
+            "bottom": 564.4444444444445
+          },
+          "技能图鉴Button": {
+            "left": 1104.4444444444443,
+            "right": 1255.5555555555554,
+            "top": 24.444444444444457,
+            "bottom": 68.8888888888888
+          }
+        }
+      }
+    },
+    {
+      "name": "desktop-hidpi",
+      "width": 1280,
+      "height": 800,
+      "dpr": 2,
+      "status": "passed",
+      "initial": {
+        "window": [
+          1280,
+          800
+        ],
+        "dpr": 2,
+        "buffer": [
+          2560,
+          1600
+        ],
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 800,
+          "top": 0,
+          "right": 1280,
+          "bottom": 800,
+          "left": 0
+        },
+        "visible": {
+          "width": 1152,
+          "height": 720
+        },
+        "lobby": {
+          "width": 1152,
+          "height": 720
+        },
+        "bounds": {
+          "AccountPageCard": {
+            "left": 328.88888888888886,
+            "right": 951.111111111111,
+            "top": 122.22222222222229,
+            "bottom": 677.7777777777778
+          },
+          "AuthBrand": {
+            "left": 546.6699981689453,
+            "right": 733.3300018310547,
+            "top": 148.42222222222233,
+            "bottom": 196.02222222222224
+          },
+          "LoginUsername": {
+            "left": 434.44444444444446,
+            "right": 845.5555555555554,
+            "top": 344.44444444444446,
+            "bottom": 393.33333333333337
+          },
+          "LoginPassword": {
+            "left": 434.44444444444446,
+            "right": 845.5555555555554,
+            "top": 411.11111111111114,
+            "bottom": 460
+          },
+          "登录账号Button": {
+            "left": 517.7777777777777,
+            "right": 762.2222222222222,
+            "top": 511.11111111111114,
+            "bottom": 564.4444444444445
+          },
+          "技能图鉴Button": {
+            "left": 1104.4444444444443,
+            "right": 1255.5555555555554,
+            "top": 24.444444444444457,
+            "bottom": 68.8888888888888
+          }
+        }
+      }
+    },
+    {
+      "name": "desktop-fractional",
+      "width": 1536,
+      "height": 864,
+      "dpr": 1.25,
+      "status": "passed",
+      "initial": {
+        "window": [
+          1536,
+          864
+        ],
+        "dpr": 1.25,
+        "buffer": [
+          1920,
+          1080
+        ],
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1536,
+          "height": 864,
+          "top": 0,
+          "right": 1536,
+          "bottom": 864,
+          "left": 0
+        },
+        "visible": {
+          "width": 1280,
+          "height": 720
+        },
+        "lobby": {
+          "width": 1280,
+          "height": 720
+        },
+        "bounds": {
+          "AccountPageCard": {
+            "left": 432,
+            "right": 1104,
+            "top": 132,
+            "bottom": 732
+          },
+          "AuthBrand": {
+            "left": 667.2,
+            "right": 868.8,
+            "top": 160.2960000000001,
+            "bottom": 211.704
+          },
+          "LoginUsername": {
+            "left": 546,
+            "right": 990,
+            "top": 372,
+            "bottom": 424.8
+          },
+          "LoginPassword": {
+            "left": 546,
+            "right": 990,
+            "top": 444,
+            "bottom": 496.8
+          },
+          "登录账号Button": {
+            "left": 636,
+            "right": 900,
+            "top": 552,
+            "bottom": 609.6
+          },
+          "技能图鉴Button": {
+            "left": 1346.4,
+            "right": 1509.6000000000001,
+            "top": 26.4,
+            "bottom": 74.3999999999999
+          }
+        }
+      }
+    },
+    {
+      "name": "wechat-portrait",
+      "width": 412,
+      "height": 820,
+      "dpr": 3,
+      "mobile": true,
+      "status": "passed",
+      "initial": {
+        "window": [
+          412,
+          820
+        ],
+        "dpr": 3,
+        "buffer": [
+          824,
+          1640
+        ],
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 412,
+          "height": 820,
+          "top": 0,
+          "right": 412,
+          "bottom": 820,
+          "left": 0
+        },
+        "visible": {
+          "width": 720,
+          "height": 1433.0097087378642
+        },
+        "lobby": {
+          "width": 720,
+          "height": 1433.0097087378642
+        },
+        "bounds": {
+          "AccountPageCard": {
+            "left": 17.166666666666696,
+            "right": 394.8333333333333,
+            "top": 175.3888888888888,
+            "bottom": 644.6111111111111
+          },
+          "AuthBrand": {
+            "left": 157.94001007080078,
+            "right": 254.05998992919922,
+            "top": 280.4374444444445,
+            "bottom": 304.9514444444444
+          },
+          "LoginUsername": {
+            "left": 100.1388888888889,
+            "right": 311.8611111111111,
+            "top": 381.38888888888897,
+            "bottom": 406.56666666666666
+          },
+          "LoginPassword": {
+            "left": 100.1388888888889,
+            "right": 311.8611111111111,
+            "top": 415.7222222222222,
+            "bottom": 440.9
+          },
+          "登录账号Button": {
+            "left": 143.05555555555554,
+            "right": 268.9444444444444,
+            "top": 467.2222222222222,
+            "bottom": 494.68888888888887
+          },
+          "技能图鉴Button": {
+            "left": 321.58888888888885,
+            "right": 399.41111111111104,
+            "top": 12.588888888888846,
+            "bottom": 35.47777777777776
+          }
+        }
+      }
+    },
+    {
+      "name": "wechat-landscape",
+      "width": 820,
+      "height": 412,
+      "dpr": 3,
+      "mobile": true,
+      "status": "passed",
+      "initial": {
+        "window": [
+          820,
+          412
+        ],
+        "dpr": 3,
+        "buffer": [
+          1640,
+          824
+        ],
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 820,
+          "height": 412,
+          "top": 0,
+          "right": 820,
+          "bottom": 412,
+          "left": 0
+        },
+        "visible": {
+          "width": 1433.0097087378642,
+          "height": 720
+        },
+        "lobby": {
+          "width": 1433.0097087378642,
+          "height": 720
+        },
+        "bounds": {
+          "AccountPageCard": {
+            "left": 249.77777777777777,
+            "right": 570.2222222222222,
+            "top": 62.94444444444446,
+            "bottom": 349.05555555555554
+          },
+          "AuthBrand": {
+            "left": 361.9400100708008,
+            "right": 458.05998992919916,
+            "top": 76.43744444444445,
+            "bottom": 100.9514444444444
+          },
+          "LoginUsername": {
+            "left": 304.13888888888886,
+            "right": 515.8611111111111,
+            "top": 177.38888888888889,
+            "bottom": 202.5666666666667
+          },
+          "LoginPassword": {
+            "left": 304.13888888888886,
+            "right": 515.8611111111111,
+            "top": 211.72222222222223,
+            "bottom": 236.9
+          },
+          "登录账号Button": {
+            "left": 347.05555555555554,
+            "right": 472.94444444444446,
+            "top": 263.22222222222223,
+            "bottom": 290.68888888888887
+          },
+          "技能图鉴Button": {
+            "left": 729.588888888889,
+            "right": 807.4111111111112,
+            "top": 12.588888888888903,
+            "bottom": 35.47777777777776
+          }
+        }
+      }
+    },
+    {
+      "name": "small-phone",
+      "width": 320,
+      "height": 568,
+      "dpr": 2,
+      "mobile": true,
+      "status": "passed",
+      "initial": {
+        "window": [
+          320,
+          568
+        ],
+        "dpr": 2,
+        "buffer": [
+          640,
+          1136
+        ],
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 568,
+          "top": 0,
+          "right": 320,
+          "bottom": 568,
+          "left": 0
+        },
+        "visible": {
+          "width": 720,
+          "height": 1278
+        },
+        "lobby": {
+          "width": 720,
+          "height": 1278
+        },
+        "bounds": {
+          "AccountPageCard": {
+            "left": 13.33333333333334,
+            "right": 306.6666666666667,
+            "top": 101.77777777777777,
+            "bottom": 466.2222222222222
+          },
+          "AuthBrand": {
+            "left": 122.66666666666667,
+            "right": 197.33333333333334,
+            "top": 183.36888888888893,
+            "bottom": 202.4088888888889
+          },
+          "LoginUsername": {
+            "left": 77.77777777777779,
+            "right": 242.22222222222223,
+            "top": 261.77777777777777,
+            "bottom": 281.33333333333337
+          },
+          "LoginPassword": {
+            "left": 77.77777777777779,
+            "right": 242.22222222222223,
+            "top": 288.44444444444446,
+            "bottom": 308
+          },
+          "登录账号Button": {
+            "left": 111.11111111111111,
+            "right": 208.88888888888886,
+            "top": 328.44444444444446,
+            "bottom": 349.77777777777777
+          },
+          "技能图鉴Button": {
+            "left": 249.77777777777777,
+            "right": 310.22222222222223,
+            "top": 9.777777777777828,
+            "bottom": 27.555555555555543
+          }
+        }
+      }
+    },
+    {
+      "name": "tablet",
+      "width": 1024,
+      "height": 768,
+      "dpr": 2,
+      "mobile": true,
+      "status": "passed",
+      "initial": {
+        "window": [
+          1024,
+          768
+        ],
+        "dpr": 2,
+        "buffer": [
+          2048,
+          1536
+        ],
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768,
+          "top": 0,
+          "right": 1024,
+          "bottom": 768,
+          "left": 0
+        },
+        "visible": {
+          "width": 960,
+          "height": 720
+        },
+        "lobby": {
+          "width": 960,
+          "height": 720
+        },
+        "bounds": {
+          "AccountPageCard": {
+            "left": 213.33333333333337,
+            "right": 810.6666666666666,
+            "top": 117.33333333333337,
+            "bottom": 650.6666666666666
+          },
+          "AuthBrand": {
+            "left": 422.40501403808594,
+            "right": 601.5949859619141,
+            "top": 142.48533333333341,
+            "bottom": 188.18133333333333
+          },
+          "LoginUsername": {
+            "left": 314.6666666666667,
+            "right": 709.3333333333334,
+            "top": 330.6666666666667,
+            "bottom": 377.6000000000001
+          },
+          "LoginPassword": {
+            "left": 314.6666666666667,
+            "right": 709.3333333333334,
+            "top": 394.6666666666667,
+            "bottom": 441.6000000000001
+          },
+          "登录账号Button": {
+            "left": 394.6666666666667,
+            "right": 629.3333333333334,
+            "top": 490.6666666666667,
+            "bottom": 541.8666666666667
+          },
+          "技能图鉴Button": {
+            "left": 855.4666666666667,
+            "right": 1000.5333333333333,
+            "top": 23.466666666666697,
+            "bottom": 66.13333333333321
+          }
+        }
+      }
+    }
+  ],
+  "validation": "Browser emulation with real canvas pointer input and isolated game snapshots; not a physical WeChat device test."
+}
