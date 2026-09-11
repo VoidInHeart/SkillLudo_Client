@@ -6,7 +6,7 @@
   "orientation": "landscape",
   "appIdConfigured": false,
   "fileCount": 30,
-  "totalBytes": 3556038,
+  "totalBytes": 3572525,
   "budgetBytes": 4194304,
   "largestFiles": [
     {
@@ -23,7 +23,7 @@
     },
     {
       "path": "assets/main/index.js",
-      "bytes": 124946
+      "bytes": 141433
     },
     {
       "path": "web-adapter.js",

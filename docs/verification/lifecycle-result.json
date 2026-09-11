@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "kind": "Cocos pointer interaction and authority-generated binding fixtures",
+  "checks": [
+    "Six-member lobby and spectator dropdown; incoming room chat expires after its 30-second deadline",
+    "Spectators see all planes but cannot roll, enable trustee mode, request pauses or commit moves",
+    "Server SKILL_READY flashes the faction button exactly three times; red inactivity warning appears below board",
+    "Right-bottom pause vote submits real pointer input; paused modal blocks play and allows chat",
+    "Champion modal accepts spectator continuation votes; final result shows champion and second place, with portrait layout",
+    "British bind response and wormhole carrier animation; checkpoint drop ends on authoritative calibrated centres"
+  ],
+  "errors": []
+}

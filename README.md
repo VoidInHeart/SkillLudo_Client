@@ -1,8 +1,12 @@
 # SkillLudo Client
 
-Cocos Creator **3.8.8**，2D 矢量棋盘 + 真实 3D 飞机/骰子。权威规则和随机数由相邻仓库 `../SkillLudo_Server` 提供，当前协议版本 **3**，必须配套更新。
+Cocos Creator **3.8.8**，2D 矢量棋盘 + 真实 3D 飞机/骰子。权威规则和随机数由相邻仓库 `../SkillLudo_Server` 提供，当前协议版本 **4**，必须配套更新。
 
 房间通过下拉框选择期望阵营：英国（红）、法国（黄）、中国（蓝）、美国（绿）。双骰可反复预选，立即高亮可动飞机，点击飞机同时提交点数与目标；无可动飞机可换点数或确认跳过。登录页/大厅可查看技能图鉴，对局中通过“阵营技能 / 图鉴”改点、选目标或强化。AI 仅触发被动，已有强制反向调整仍需执行。
+
+房间最多四个参赛席和两个观战席，下拉框可选择观战；观战可聊天，不能操作飞机。当前玩家 30 秒无有效操作进入托管，最后 10 秒红字提醒。技术暂停投票通过后封存 2 分钟，可离开网页再重连。冠军产生后弹框投票，一次性决定是否继续角逐第二名。聊天浮窗停留 30 秒，技能就绪/被动触发时有系统公告与橙色三次闪烁。
+
+虫洞仅碰撞两端，整次行动最多一次同色跳跃。英国觉醒前可一次绑定敌机；绑定/诅咒有标记和同行动画。中国觉醒累计严格超过 100，升级后的图鉴动态说明免反向、储备和 ±2 范围；英国/中国改点不连投。
 
 ## 开发与构建
 
@@ -32,6 +36,7 @@ npm run preview:build
 | `GameController / PresentationQueue / NetworkManager` | 命令、顺序播放消息、快照、输入锁、断线恢复 |
 | `GameUI / MatchHud` | 账号/房间与对局操作界面 |
 | `SkillDialogs / ActionSelection` | 图鉴、改点预览、受击选择、目标确认与可撤销选骰 |
+| `MatchOverlays / MatchPresentation` | 30 秒聊天浮窗、挂机倒计时、技术暂停和胜后投票 |
 | `SkillCatalog / GameProtocol / PathData` | 服务端生成的技能文案、协议和公共航线映射 |
 | `ResponsiveCanvas / GameViewport` | 横竖屏等比画布、棋盘和操作区布局 |
 
@@ -50,7 +55,7 @@ npm run verify:browser
 
 浏览器脚本使用 Playwright 和本机 Chrome。可通过 `PLAYWRIGHT_PATH`、`SKILLLUDO_BROWSER` 指定路径；本机 Codex 依赖也可自动发现。`verify:browser` 只在测试浏览器中显式连接 3101（可用 `SKILLLUDO_TEST_SERVER` 覆盖），并设置本地游客 UI；这不修改正式认证流程。检查包括真实点击下拉框/图鉴/双骰反复预选/飞机一次提交、重连、视角、特殊动作、格心、旋转校准和横竖屏。`docs/verification/README.md` 区分真实联机和本地表现夹具。`verify:published` 单独验收公网网页和实际自动选址，不使用端口替换。
 
-技能表现回归：先在服务端运行 `npm run verify:skill-fixtures`，再在本仓运行 `npm run verify:skills`。五组服务器生成的场景验证英国换位/合计、中国改点/能量/CD、法国响应/锁标、美国轰炸/中国回起飞处、巴黎救援，以及托管禁用和竖屏；该脚本隔离网络并检查发出的命令，不等同于真实网络回合。真实 WebSocket 的过期请求、法国重连/超时/退出/托管由服务端 `SkillNetwork.test.ts` 覆盖。
+技能表现回归：先在服务端运行 `npm run verify:skill-fixtures`，再运行本仓 `npm run verify:skills` 和 `npm run verify:lifecycle`。七组权威场景覆盖原技能、英国绑定同行/检查点落下；新流程同时点击验证观战、技能闪烁、托管提示、暂停和冠军投票及竖屏。脚本隔离网络并核对命令，不等同于真实网络回合。真实 WebSocket 由服务端 `SkillNetwork.test.ts`、`Spectators.test.ts`、`LifecycleSockets.test.ts` 覆盖。本仓 22 项纯逻辑回归。
 
 ## 微信小游戏
 

@@ -5,6 +5,7 @@ import type { ActiveGameSummary, BoardCalibrationOpen } from '../protocol/GamePr
 import { MatchHud } from './MatchHud';
 import { SkillDialogs, type SkillInput } from './SkillDialogs';
 import { FACTION_NAMES } from '../game/SkillCatalog';
+import { MatchOverlays } from './MatchOverlays';
 
 const { ccclass, property } = _decorator;
 type Screen = 'HOME' | 'AUTH' | 'ROOM' | 'GAME';
@@ -29,11 +30,13 @@ export class GameUI extends Component {
 
   private matchHud: MatchHud | null = null;
   private skills: SkillDialogs | null = null;
+  private overlays: MatchOverlays | null = null;
+  private serverNow = () => Date.now();
   private presentationBusy = false;
   private requestPending = false;
   private preferenceLabel: Label | null = null;
   private preferenceMenu: Node | null = null;
-  private preferredColor: PlayerColor | null = null;
+  private preferredColor: PlayerColor | 'SPECTATOR' | null = null;
   private runtimeRoot: Node | null = null;
   private homeRoot: Node | null = null;
   private authRoot: Node | null = null;
@@ -93,14 +96,24 @@ export class GameUI extends Component {
     this.matchHud?.showCalibration(target ? `校准 ${target.index}/${target.total}：${target.key}` : '');
   }
   public onDestroy(): void {
-    this.matchHud?.destroy(); this.skills?.destroy();
+    this.matchHud?.destroy(); this.skills?.destroy(); this.overlays?.destroy();
     view.off('canvas-resize', this.resizeSkillButtons, this); view.off('design-resolution-changed', this.resizeSkillButtons, this);
   }
   private resizeSkillButtons(): void {
     const size = view.getVisibleSize();
     for (const root of [this.homeRoot, this.authRoot]) root?.getChildByName('技能图鉴Button')?.setPosition(size.width / 2 - 90, size.height / 2 - 42);
   }
-  public update(): void { this.skills?.update(); }
+  public update(): void { this.skills?.update(); this.overlays?.update(); this.matchHud?.update(); }
+  public setServerClock(now: () => number): void { this.serverNow = now; this.skills?.setClock(now); this.overlays?.setClock(now); }
+  public flashSkills(): void { this.matchHud?.flashSkills(); }
+  private matchOverlays(): MatchOverlays {
+    if (!this.overlays) {
+      this.overlays = new MatchOverlays(this.getRuntimeRoot(), (input) => this.node.emit('lifecycle-input', input));
+      this.overlays.setClock(() => this.serverNow());
+      this.overlays.setVisible(['ROOM', 'GAME'].includes(this.currentScreen));
+    }
+    return this.overlays;
+  }
   public setPresentationBusy(busy: boolean): void { this.presentationBusy = busy; this.matchHud?.setBusy(busy); this.skills?.setBusy(busy || this.requestPending); }
   public setDiceRequestPending(): void { this.requestPending = true; this.matchHud?.requestPending(); this.skills?.setBusy(true); }
   public setSelectedOption(option: ActionOption | null): void { this.matchHud?.setSelectedOption(option); }
@@ -109,7 +122,8 @@ export class GameUI extends Component {
   public setSkillTarget(message: string): void { this.matchHud?.setSkillTarget(message); }
   public confirmSkillTarget(description: string, input: SkillInput, cancel: () => void): void { this.skillDialogs().confirmTarget(description, input, cancel); }
   private skillDialogs(): SkillDialogs {
-    return this.skills ??= new SkillDialogs(this.getRuntimeRoot(), (input) => this.node.emit('skill-input', input));
+    if (!this.skills) { this.skills = new SkillDialogs(this.getRuntimeRoot(), (input) => this.node.emit('skill-input', input)); this.skills.setClock(() => this.serverNow()); }
+    return this.skills;
   }
 
   /** Updated after an account session is authenticated. The side drawer is intentionally
@@ -125,11 +139,13 @@ export class GameUI extends Component {
     this.requestPending = false;
     this.localPlayerId = localPlayerId;
     this.updatePlayerColors(snapshot.players);
+    this.matchOverlays().render(snapshot, localPlayerId);
     if (snapshot.roomStatus === 'WAITING') { this.renderRoom(snapshot, localPlayerId); return; }
     this.setScreen('GAME');
     this.matchHud?.render(snapshot, localPlayerId);
     this.skillDialogs().setBusy(this.presentationBusy);
     this.skillDialogs().sync(snapshot, localPlayerId);
+    if (snapshot.lifecycle?.pause || snapshot.phase === 'WINNER_VOTE') this.skills?.close();
   }
 
   public showError(message: string): void {
@@ -157,6 +173,7 @@ export class GameUI extends Component {
     this.chatEntries.push(entry);
     if (this.chatEntries.length > 80) this.chatEntries.shift();
     this.renderChatEntries();
+    this.matchOverlays().appendChat(entry);
   }
 
   /** A full page, not a modal: mirrors the dedicated auth-route treatment in the reference project. */
@@ -200,7 +217,7 @@ export class GameUI extends Component {
     const targetLabel = this.addLabel(card, 'ChatTarget', '发送至：房间广播', new Vec3(0, 190, 0), 520, 28, 17, new Color(74, 94, 120));
     let recipientId = '';
     this.createModalButton(card, '广播', new Vec3(-245, 150, 0), new Color(40, 117, 214), () => { recipientId = ''; targetLabel.string = '发送至：房间广播'; }, 92, 36, 14);
-    snapshot.players.filter((player) => player.id !== localPlayerId).forEach((player, index) => {
+    [...snapshot.players, ...(snapshot.spectators ?? [])].filter((player) => player.id !== localPlayerId).forEach((player, index) => {
       const x = -130 + (index % 3) * 130;
       const y = 150 - Math.floor(index / 3) * 42;
       this.createModalButton(card, `私信 ${player.nickname}`, new Vec3(x, y, 0), new Color(120, 91, 177), () => { recipientId = player.id; targetLabel.string = `发送至：私信 ${player.nickname}`; }, 118, 34, 13);
@@ -278,24 +295,27 @@ export class GameUI extends Component {
     this.setScreen('ROOM');
     this.updatePlayerColors(snapshot.players);
     this.roomOwnerId = snapshot.ownerId;
-    this.setText(this.roomTitleLabel, `房间 ${snapshot.roomId}`);
+    this.setText(this.roomTitleLabel, `房间 ${snapshot.roomId} · ${snapshot.players.length + (snapshot.spectators?.length ?? 0)}/6`);
     const isOwner = snapshot.ownerId === localPlayerId;
     const canStart = isOwner && snapshot.players.length >= 2 && snapshot.players.every((player) => player.ready);
-    this.setText(this.roomPlayersLabel, snapshot.players.map((player, index) => `${index + 1}. ${player.nickname}${player.id === snapshot.ownerId ? ' · 房主' : ''}　期望：${player.preferredColor ? this.colorName(player.preferredColor) : '不限'}　${player.ready ? '已准备' : '未准备'}`).join('\n'));
+    this.setText(this.roomPlayersLabel, snapshot.players.map((player, index) => `${index + 1}. ${player.nickname}${player.id === snapshot.ownerId ? ' · 房主' : ''}　期望：${player.preferredColor ? this.colorName(player.preferredColor) : '不限'}　${player.ready ? '已准备' : '未准备'}`)
+      .concat((snapshot.spectators ?? []).map((p) => `观战 · ${p.nickname}${p.id === snapshot.ownerId ? ' · 房主' : ''}`)).join('\n'));
     this.setText(this.roomNoticeLabel, isOwner ? (canStart ? '全部准备完成，可以开始对局' : '等待至少一位玩家加入并全部准备') : '等待房主开始对局');
     if (this.readyButton) this.readyButton.interactable = !!snapshot.players.find((player) => player.id === localPlayerId);
     if (this.startButton) this.startButton.interactable = canStart;
     this.updateStartButtonAppearance(canStart);
     const local = snapshot.players.find((player) => player.id === localPlayerId);
     this.updateActionButtonTitle('READY', local?.ready ? '取消准备' : '准备');
-    this.preferredColor = local?.preferredColor ?? null;
-    this.setText(this.preferenceLabel, `期望阵营：${this.preferredColor ? this.colorName(this.preferredColor) : '不限'}　▾`);
+    this.preferredColor = snapshot.spectators?.some((p) => p.id === localPlayerId) ? 'SPECTATOR' : local?.preferredColor ?? null;
+    this.setText(this.preferenceLabel, `期望阵营：${this.preferredColor === 'SPECTATOR' ? '观战' : this.preferredColor ? this.colorName(this.preferredColor) : '不限'}　▾`);
+    if (!local) this.setText(this.roomNoticeLabel, '观战席：可聊天，无需准备；房主仍可开始游戏');
   }
 
   private setScreen(screen: Screen): void {
     if (screen !== this.currentScreen) this.skills?.close();
     if (screen !== 'ROOM') { this.preferenceMenu?.destroy(); this.preferenceMenu = null; }
     this.currentScreen = screen;
+    this.overlays?.setVisible(screen === 'ROOM' || screen === 'GAME');
     this.matchHud?.setVisible(screen === 'GAME');
     if (screen !== 'HOME') this.closeAccountDrawer();
     const home = screen === 'HOME'; const auth = screen === 'AUTH'; const room = screen === 'ROOM'; const game = screen === 'GAME';
@@ -424,7 +444,8 @@ export class GameUI extends Component {
     const graphics = root.addComponent(Graphics); graphics.fillColor = new Color(8, 31, 74, 255); graphics.rect(-size.width / 2, -size.height / 2, size.width, size.height); graphics.fill(); graphics.fillColor = new Color(24, 74, 145, 255); graphics.circle(-size.width * 0.4, size.height * 0.4, size.width * 0.45); graphics.fill(); graphics.fillColor = new Color(255, 255, 255, 250); graphics.roundRect(-layout.cardWidth / 2, layout.cardBottom, layout.cardWidth, layout.cardHeight, layout.portrait ? 32 : 28); graphics.fill(); graphics.strokeColor = new Color(126, 187, 245, 255); graphics.lineWidth = 3; graphics.roundRect(-layout.cardWidth / 2, layout.cardBottom, layout.cardWidth, layout.cardHeight, layout.portrait ? 32 : 28); graphics.stroke();
     this.roomTitleLabel = this.addLabel(root, 'RoomTitle', '', new Vec3(0, layout.titleY, 0), 620, 44, layout.portrait ? 34 : 30, new Color(22, 75, 145));
     this.addLabel(root, 'RoomPlayersHeading', '机组成员', new Vec3(0, layout.playersHeadingY, 0), 500, 34, layout.portrait ? 24 : 21, new Color(55, 81, 119));
-    this.roomPlayersLabel = this.addLabel(root, 'RoomPlayers', '', new Vec3(0, layout.playersY + 12, 0), 640, layout.portrait ? 154 : 110, layout.portrait ? 18 : 16, new Color(37, 57, 85));
+    this.roomPlayersLabel = this.addLabel(root, 'RoomPlayers', '', new Vec3(0, layout.playersY + 12, 0), 640, layout.portrait ? 154 : 130, layout.portrait ? 18 : 15, new Color(37, 57, 85));
+    this.roomPlayersLabel.overflow = Label.Overflow.SHRINK;
     this.roomNoticeLabel = this.addLabel(root, 'RoomNotice', '', new Vec3(0, layout.noticeY, 0), 600, 36, layout.portrait ? 19 : 17, new Color(76, 105, 140));
     const pickerY = layout.portrait ? layout.noticeY + 54 : view.getVisibleSize().height < 600 ? -47 : -44;
     this.createModalButton(root, 'PreferenceDropdown', new Vec3(0, pickerY), new Color('#dfe9f2'), () => this.togglePreferenceMenu(root, pickerY), 260, 38, 15);
@@ -440,12 +461,12 @@ export class GameUI extends Component {
     const overlay = new Node('PreferenceOverlay'); overlay.setParent(this.getRuntimeRoot()); overlay.layer = Layers.Enum.UI_2D;
     overlay.addComponent(UITransform).setContentSize(view.getVisibleSize()); overlay.addComponent(BlockInputEvents);
     overlay.on(Node.EventType.TOUCH_END, () => { this.preferenceMenu?.destroy(); this.preferenceMenu = null; });
-    const menu = this.createCard(overlay, 'PreferenceMenu', 260, 204, new Color('#edf4fa'), new Color('#aac6df'));
-    menu.setPosition(0, y - 125);
+    const menu = this.createCard(overlay, 'PreferenceMenu', 260, 244, new Color('#edf4fa'), new Color('#aac6df'));
+    menu.setPosition(0, Math.max(-view.getVisibleSize().height / 2 + 130, y - 145));
     this.preferenceMenu = overlay;
-    const preferences: Array<PlayerColor | null> = [null, 'RED', 'YELLOW', 'BLUE', 'GREEN'];
+    const preferences: Array<PlayerColor | 'SPECTATOR' | null> = [null, 'RED', 'YELLOW', 'BLUE', 'GREEN', 'SPECTATOR'];
     preferences.forEach((color, index) => {
-      this.createModalButton(menu, color ? this.colorName(color) : '不限', new Vec3(0, 80 - index * 40),
+      this.createModalButton(menu, color === 'SPECTATOR' ? '观战（最多 2 人）' : color ? this.colorName(color) : '不限', new Vec3(0, 100 - index * 40),
         new Color(color === this.preferredColor ? '#287bc0' : '#547797'), () => {
           this.preferenceMenu?.destroy(); this.preferenceMenu = null; this.node.emit('color-preference', color);
         }, 246, 36, 16);

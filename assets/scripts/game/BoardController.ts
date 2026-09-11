@@ -80,12 +80,16 @@ export class BoardController extends Component {
       const stack = snapshot.pieces.filter((p) => p.color === piece.color && p.state === piece.state && p.progress === piece.progress && !!p.detour === !!piece.detour);
       const inAirport = piece.state === 'AIRPORT' || piece.state === 'FINISHED';
       const level = inAirport ? 0 : stack.findIndex((p) => p.id === piece.id);
-      this.scene3D.place(actor, this.piecePoint(piece), level * 7, piece.state === 'FINISHED' ? 0.86 : 1);
+      this.scene3D.place(actor, this.piecePoint(piece), level * 7 + (piece.boundTo ? 26 : 0), piece.state === 'FINISHED' ? 0.86 : 1);
       actor.model.setRotationFromEuler(12, -8, 0);
       const badge = actor.hit.getChildByName('Badge')!.getComponent(Label)!;
       badge.string = piece.state === 'FINISHED' ? '✓' : level > 0 && level === stack.length - 1 ? String(stack.length) : '';
       badge.color = piece.state === 'FINISHED' ? new Color('#a77713') : new Color('#ffffff');
       actor.hit.getChildByName('LockBadge')!.active = !!piece.locked;
+      const stateBadge = actor.hit.getChildByName('StateBadge')!;
+      stateBadge.active = !!piece.boundTo || !!piece.cursed;
+      const stateLabel = stateBadge.getComponent(Label)!;
+      stateLabel.string = piece.boundTo ? '链' : '1'; stateLabel.color = new Color(piece.boundTo ? '#2fcfe2' : '#bf75ff');
     }
     this.dice.restore(snapshot.diceChoices, snapshot.rollId, snapshot.phase === 'WAIT_SELECT_DIE');
     this.setMovablePieces(snapshot.movablePieceIds);
@@ -163,6 +167,7 @@ export class BoardController extends Component {
     const epoch = this.epoch;
     this.clearMovePreview(); this.dice.hide(); this.setMovablePieces([]);
     let current = this.piecePoint(piece);
+    let previousProgress = result.fromProgress;
     const captureTasks: Promise<void>[] = [];
     const captured = new Set<string>();
     const capture = (id: string): void => {
@@ -185,13 +190,29 @@ export class BoardController extends Component {
           const position = Vec3.lerp(new Vec3(), from, destination, u);
           this.scene3D.place(actor, position, Math.sin(Math.PI * t) * height);
           actor.model.setRotationFromEuler(12 + Math.sin(t * Math.PI * 2) * (flight ? 28 : 12), Math.sin(t * Math.PI) * 20, heading);
+          for (const carried of result.carriedPieces ?? []) {
+            const follower = this.actors.get(carried.after.id);
+            if (!follower || previousProgress < carried.fromCarrierProgress || previousProgress >= carried.toCarrierProgress) continue;
+            const fraction = Math.min(1, (carried.toCarrierProgress - previousProgress) / Math.max(1, progress - previousProgress));
+            const v = Math.min(1, u / fraction);
+            const end = carried.toCarrierProgress < progress ? this.piecePoint(carried.after) : destination;
+            const lift = Math.sin(Math.PI * Math.min(1, t / fraction)) * height + (carried.after.boundTo || v < 1 ? 26 : 0);
+            this.scene3D.place(follower, Vec3.lerp(new Vec3(), from, end, v), lift);
+            follower.model.setRotationFromEuler(12, -8, heading);
+          }
         });
         if (!completed || epoch !== this.epoch) return;
         current = destination;
+        previousProgress = progress;
       }
       for (const hit of result.captures) if (hit.atProgress === segment.toProgress) capture(hit.pieceId);
     }
     for (const id of result.killedPieceIds) capture(id);
+    for (const carried of result.carriedPieces ?? []) {
+      const follower = this.actors.get(carried.after.id);
+      if (follower) this.scene3D.place(follower, this.piecePoint(carried.after), carried.after.boundTo ? 26 : 0);
+      captureTasks.push(this.impact(this.piecePoint(carried.after), new Color('#48d5eb'), .35));
+    }
     if (result.reachedFinish) {
       await this.impact(current, new Color('#e9b744'), 0.5);
       if (epoch !== this.epoch) return;
@@ -242,6 +263,10 @@ export class BoardController extends Component {
     g.strokeColor = new Color('#ffe08a'); g.lineWidth = 2.5; g.roundRect(-5, 0, 10, 9, 4); g.stroke();
     g.fillColor = new Color('#ffe08a'); g.roundRect(-8, -9, 16, 13, 2); g.fill();
     g.fillColor = new Color('#142234'); g.circle(0, -3, 2); g.fill(); lock.active = false;
+    const stateBadge = new Node('StateBadge'); stateBadge.layer = Layers.Enum.UI_2D; stateBadge.setParent(actor.hit); stateBadge.setPosition(-19, 18); stateBadge.addComponent(UITransform).setContentSize(28, 28);
+    const bg = stateBadge.addComponent(Graphics); bg.fillColor = new Color('#11283d'); bg.circle(0, 0, 14); bg.fill();
+    const stateLabel = stateBadge.addComponent(Label); stateLabel.fontSize = 19; stateLabel.isBold = true; stateLabel.horizontalAlign = Label.HorizontalAlign.CENTER; stateLabel.verticalAlign = Label.VerticalAlign.CENTER;
+    stateBadge.active = false;
     this.actors.set(piece.id, actor);
     return actor;
   }

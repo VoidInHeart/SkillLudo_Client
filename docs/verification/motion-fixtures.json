@@ -49,7 +49,8 @@
       ],
       "reachedFinish": false,
       "playerFinished": false,
-      "extraTurn": false
+      "extraTurn": false,
+      "effectiveDice": 1
     }
   },
   {
@@ -119,22 +120,18 @@
         {
           "pieceId": "RED-1",
           "atProgress": 30
-        },
-        {
-          "pieceId": "BLUE-1",
-          "atProgress": 27
         }
       ],
       "tookOff": false,
       "jumped": true,
       "usedFlightPath": true,
       "killedPieceIds": [
-        "RED-1",
-        "BLUE-1"
+        "RED-1"
       ],
       "reachedFinish": false,
       "playerFinished": false,
-      "extraTurn": false
+      "extraTurn": false,
+      "effectiveDice": 2
     }
   },
   {
@@ -173,7 +170,8 @@
       "killedPieceIds": [],
       "reachedFinish": true,
       "playerFinished": false,
-      "extraTurn": false
+      "extraTurn": false,
+      "effectiveDice": 1
     }
   },
   {
@@ -218,7 +216,8 @@
       "killedPieceIds": [],
       "reachedFinish": false,
       "playerFinished": false,
-      "extraTurn": false
+      "extraTurn": false,
+      "effectiveDice": 4
     }
   }
 ]

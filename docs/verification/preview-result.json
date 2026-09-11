@@ -16,7 +16,7 @@
     "pieces": [
       {
         "id": "green-1",
-        "playerId": "p_c1e9a6f2-5829-418e-9608-080b306683e5",
+        "playerId": "p_21ba3dde-cc7b-4683-8227-6ebcfd1bcf6d",
         "color": "GREEN",
         "state": "MAIN_PATH",
         "progress": 0,
@@ -25,105 +25,105 @@
       },
       {
         "id": "green-2",
-        "playerId": "p_c1e9a6f2-5829-418e-9608-080b306683e5",
+        "playerId": "p_21ba3dde-cc7b-4683-8227-6ebcfd1bcf6d",
         "color": "GREEN",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "green-3",
-        "playerId": "p_c1e9a6f2-5829-418e-9608-080b306683e5",
+        "playerId": "p_21ba3dde-cc7b-4683-8227-6ebcfd1bcf6d",
         "color": "GREEN",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "green-4",
-        "playerId": "p_c1e9a6f2-5829-418e-9608-080b306683e5",
+        "playerId": "p_21ba3dde-cc7b-4683-8227-6ebcfd1bcf6d",
         "color": "GREEN",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "blue-1",
-        "playerId": "p_c223d8e3-aee0-40f0-882b-cbe69fcfdd1b",
+        "playerId": "p_630e7b28-6c10-42f8-8c41-aaaeb3ad92ab",
         "color": "BLUE",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "blue-2",
-        "playerId": "p_c223d8e3-aee0-40f0-882b-cbe69fcfdd1b",
+        "playerId": "p_630e7b28-6c10-42f8-8c41-aaaeb3ad92ab",
         "color": "BLUE",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "blue-3",
-        "playerId": "p_c223d8e3-aee0-40f0-882b-cbe69fcfdd1b",
+        "playerId": "p_630e7b28-6c10-42f8-8c41-aaaeb3ad92ab",
         "color": "BLUE",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "blue-4",
-        "playerId": "p_c223d8e3-aee0-40f0-882b-cbe69fcfdd1b",
+        "playerId": "p_630e7b28-6c10-42f8-8c41-aaaeb3ad92ab",
         "color": "BLUE",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "yellow-1",
-        "playerId": "ai_858471_3",
+        "playerId": "ai_179791_3",
         "color": "YELLOW",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "yellow-2",
-        "playerId": "ai_858471_3",
+        "playerId": "ai_179791_3",
         "color": "YELLOW",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "yellow-3",
-        "playerId": "ai_858471_3",
+        "playerId": "ai_179791_3",
         "color": "YELLOW",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "yellow-4",
-        "playerId": "ai_858471_3",
+        "playerId": "ai_179791_3",
         "color": "YELLOW",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "red-1",
-        "playerId": "ai_858471_4",
+        "playerId": "ai_179791_4",
         "color": "RED",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "red-2",
-        "playerId": "ai_858471_4",
+        "playerId": "ai_179791_4",
         "color": "RED",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "red-3",
-        "playerId": "ai_858471_4",
+        "playerId": "ai_179791_4",
         "color": "RED",
         "state": "AIRPORT",
         "progress": -1
       },
       {
         "id": "red-4",
-        "playerId": "ai_858471_4",
+        "playerId": "ai_179791_4",
         "color": "RED",
         "state": "AIRPORT",
         "progress": -1
@@ -134,6 +134,6 @@
       "meshVertices": 468
     },
     "phase": "WAIT_ROLL",
-    "room": "858471"
+    "room": "179791"
   }
 }

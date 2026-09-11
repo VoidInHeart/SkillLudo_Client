@@ -3,6 +3,7 @@ import type { ActionOption, GameSnapshot, PlayerColor } from '../protocol/GamePr
 import { BOARD_COLORS } from '../game/BoardGeometry';
 import { gameViewport } from '../game/GameViewport';
 import { FACTION_NAMES as names } from '../game/SkillCatalog';
+import { skillFlashOrange } from './MatchPresentation';
 
 const WHITE = new Color('#edf4fa');
 const MUTED = new Color('#a4b8cc');
@@ -21,6 +22,13 @@ export class MatchHud {
   private calibrationText = '';
   private selectedOption: ActionOption | null = null;
   private skillTarget = '';
+  private flashStarted = -Infinity;
+  private flashOn = false;
+  public flashSkills(): void { this.flashStarted = Date.now(); this.update(); }
+  public update(): void {
+    const on = skillFlashOrange(Date.now() - this.flashStarted);
+    if (on !== this.flashOn) { this.flashOn = on; this.refresh(); }
+  }
   public constructor(parent: Node, private readonly emit: (action: string) => void) {
     this.root = this.node('MatchHud', parent, 286, 664);
     this.rebuild();
@@ -59,11 +67,11 @@ export class MatchHud {
     this.label('status', '', 0, p ? -4 : top - 314, width - 20, 44, 16, WHITE);
     this.button('ROLL_DICE', '掷出双骰', p ? -width * 0.24 : 0, p ? -59 : top - 369, p ? width * 0.42 : width - 42, 44, 19);
     this.button('SKILLS', '阵营技能 / 图鉴', p ? width * 0.23 : 0, p ? -59 : top - 416, p ? width * 0.42 : width - 42, 36, 16);
-    const actions = [['GAME_CHAT', '聊天'], ['AI_TAKEOVER', 'AI托管'], ['EXIT_GAME', '退出'], ['DEBUG_DICE', '调试'], ['CALIBRATE', '校准']];
+    const actions = [['GAME_CHAT', '聊天'], ['AI_TAKEOVER', 'AI托管'], ['EXIT_GAME', '退出'], ['TECH_PAUSE', '技术暂停'], ['DEBUG_DICE', '调试'], ['CALIBRATE', '校准']];
     actions.forEach(([action, title], index) => {
-      const x = p ? (index - 2) * Math.min(108, (width - 28) / 5) : (index % 3 - 1) * 85;
+      const x = p ? (index - 2.5) * (width - 20) / 6 : (index % 3 - 1) * 85;
       const y = p ? -114 : top - 464 - Math.floor(index / 3) * 42;
-      this.button(action, title, x, y, p ? 96 : 78, 32, 14);
+      this.button(action, title, x, y, p ? (width - 28) / 6 - 5 : 78, 32, 13);
     });
     this.label('calibration', this.calibrationText, 0, p ? -144 : -height / 2 + 22, width - 16, 28, 12, new Color('#f8d776'));
     this.refresh();
@@ -75,8 +83,8 @@ export class MatchHud {
     const local = snapshot.players.find((p) => p.id === this.localPlayerId);
     const current = snapshot.players.find((p) => p.id === snapshot.currentPlayerId);
     const myTurn = current?.id === this.localPlayerId && !local?.aiControlled;
-    const enabled = !!myTurn && !this.busy && !this.pending && !this.skillTarget;
-    this.text('room', `${snapshot.roomId} · 第 ${snapshot.turnNumber} 回合`);
+    const enabled = !!myTurn && !this.busy && !this.pending && !this.skillTarget && !snapshot.lifecycle?.pause;
+    this.text('room', `${snapshot.roomId} · 第 ${snapshot.turnNumber} 回合${snapshot.spectators?.length ? ` · 观战 ${snapshot.spectators.length}` : ''}`);
     this.text('color', local ? `${names[local.color]} · 你的机场在左下` : '观战');
     const lines = snapshot.players.map((p) => `${p.id === current?.id ? '▶ ' : ''}${names[p.color]} · ${p.nickname.slice(0, 9)}${p.isBot || p.aiControlled ? ' [AI]' : ''}`);
     this.text('players', lines.join('\n'));
@@ -91,10 +99,11 @@ export class MatchHud {
     this.enable('ROLL_DICE', enabled && (snapshot.phase === 'WAIT_ROLL' || canPass));
     this.enable('DEBUG_DICE', enabled && snapshot.phase === 'WAIT_ROLL');
     this.enable('GAME_CHAT', true);
-    this.enable('AI_TAKEOVER', snapshot.roomStatus === 'PLAYING');
+    this.enable('AI_TAKEOVER', !!local && snapshot.roomStatus === 'PLAYING' && !snapshot.lifecycle?.pause);
+    this.enable('TECH_PAUSE', !!local && !local.aiControlled && snapshot.roomStatus === 'PLAYING' && snapshot.phase !== 'WINNER_VOTE' && !snapshot.lifecycle?.pause && !snapshot.lifecycle?.pauseVote && !this.pending);
     this.enable('EXIT_GAME', snapshot.roomStatus === 'PLAYING');
     this.enable('CALIBRATE', this.admin && !this.busy);
-    this.enable('SKILLS', snapshot.phase !== 'WAIT_REACTION');
+    this.enable('SKILLS', snapshot.phase !== 'WAIT_REACTION' && !snapshot.lifecycle?.pause);
     this.text('SKILLS', this.skillTarget ? '取消目标选择' : '阵营技能 / 图鉴');
     this.text('AI_TAKEOVER', local?.aiControlled ? '取消托管' : 'AI托管');
     let status = myTurn ? snapshot.phase === 'WAIT_SELECT_DIE' ? '点击棋盘骰子或点数卡选择' : snapshot.phase === 'WAIT_SELECT_PIECE' ? '请选择高亮飞机' : '轮到你投骰子' : `等待 ${current?.nickname ?? '玩家'}`;
@@ -103,7 +112,10 @@ export class MatchHud {
     if (this.busy) status = '正在播放棋局动作…';
     if (this.pending) status = '正在等待服务器…';
     if (snapshot.rescuePieceIds?.length) status = `巴黎救援 · 剩余 ${snapshot.rescuePieceIds.length} 架\n${status}`;
-    if (snapshot.phase === 'WAIT_REACTION') status = '等待法国选择是否锁定飞机…';
+    if (snapshot.phase === 'WAIT_REACTION') status = snapshot.reaction?.kind === 'UK_BIND' ? '等待英国选择是否绑定敌机…' : '等待法国选择是否锁定飞机…';
+    if (snapshot.lifecycle?.continuationUsed && snapshot.phase !== 'GAME_OVER') status = `正在角逐第二名\n${status}`;
+    if (snapshot.phase === 'WINNER_VOTE') status = '冠军已产生，等待继续投票…';
+    if (snapshot.lifecycle?.pause) status = '技术暂停中，棋局已封存';
     if (this.skillTarget && !this.pending) status = this.skillTarget;
     if (snapshot.phase === 'GAME_OVER') status = `本局获胜：${snapshot.players.find((p) => p.id === snapshot.rankings[0])?.nickname ?? '对局结束'}`;
     this.text('status', status);
@@ -113,7 +125,7 @@ export class MatchHud {
     const button = this.buttons.get(action)!; button.interactable = enabled;
     const size = button.node.getComponent(UITransform)!;
     const graphics = button.node.getComponent(Graphics)!;
-    graphics.clear(); graphics.fillColor = new Color(selected ? '#ad8240' : enabled ? '#287bc0' : '#293e50');
+    graphics.clear(); graphics.fillColor = new Color(action === 'SKILLS' && this.flashOn ? '#f28a24' : selected ? '#ad8240' : enabled ? '#287bc0' : '#293e50');
     graphics.roundRect(-size.width / 2, -size.height / 2, size.width, size.height, 9); graphics.fill();
     this.labels.get(action)!.color = enabled || selected ? WHITE : MUTED;
   }

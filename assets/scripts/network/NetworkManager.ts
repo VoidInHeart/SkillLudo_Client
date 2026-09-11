@@ -12,6 +12,8 @@ export class NetworkManager {
   private reconnectAttempt = 0;
   private manuallyDisconnected = false;
   private heartbeatTimer: number | null = null;
+  private serverOffset = 0;
+  public serverNow(): number { return Date.now() + this.serverOffset; }
 
   public connect(url: string): Promise<void> {
     this.url = url;
@@ -80,6 +82,7 @@ export class NetworkManager {
     try {
       const message = JSON.parse(String(raw)) as ServerMessage;
       if (!message.type || typeof message.type !== 'string') throw new Error('无效服务器消息');
+      if (Number.isFinite(message.serverTime)) this.serverOffset = message.serverTime - Date.now();
       this.emit(message.type, message);
     } catch (error) {
       this.emit('NETWORK_ERROR', { type: 'ERROR', data: { code: 'INVALID_SERVER_MESSAGE', message: String(error) }, serverTime: Date.now() });

@@ -8,7 +8,7 @@ export function gameViewport(width: number, height: number) {
     boardX: portrait ? 0 : -146,
     boardY: portrait ? height / 2 - boardSize / 2 - 66 : 0,
     hudX: portrait ? 0 : width / 2 - 155,
-    hudY: portrait ? height / 2 - boardSize - 236 : 0,
+    hudY: portrait ? height / 2 - boardSize - 250 : 0,
     hudWidth: portrait ? Math.min(width - 40, 660) : 286,
     hudHeight: portrait ? 310 : Math.min(height - 40, 664)
   };

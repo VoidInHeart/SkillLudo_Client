@@ -1,6 +1,16 @@
-# 2026-09-09 验收记录
+# SkillLudo 验收记录
 
-## 当前：2026-09-11 协议 v3 / 阵营技能
+## 当前：2026-09-11 协议 v4
+
+客户端 22、服务端 80 项回归通过。`preview-result.json`、`skill-result.json`、`lifecycle-result.json` 三组浏览器检查通过且错误为空；后两组是拦截命令的 Cocos 交互测试，网络正确性由服务端真实 WebSocket 用例覆盖。
+
+新增证据：`lifecycle-room-spectators.png`、`lifecycle-room-toast.png`、`lifecycle-afk-toast.png`、`lifecycle-pause-vote.png`、`lifecycle-pause.png`、`lifecycle-winner.png`、`lifecycle-winner-portrait.png`、`lifecycle-binding.png`、`lifecycle-checkpoint.png`。已检查桌面及 390×844 竖屏。绑定场景来自服务器，不依赖生产测试接口。
+
+重现新增交互：服务端 `npm run verify:skill-fixtures`，客户端 `npm run verify:lifecycle`；前置为最新 Web 构建、7459 静态服务和 3101 独立验收服务。`skill-fixtures.json` 现在含七组场景。截图来源为 Chrome SwiftShader，不能当作手机性能数据。
+
+微信静态构建、线上发布结果以对应最新 JSON 时间和发布清单为准；以下为上一轮历史验收。
+
+## 历史：2026-09-11 协议 v3 / 阵营技能
 
 `preview-result.json` 和常规截图已更新：实际点击图鉴、房间期望下拉框、反复预选两枚骰子，再点击飞机一次提交；重连、四组动画落点、两方视角、旋转校准与竖屏通过。新交互看 `move-preview.png`，旧 `move-confirmation.png` 仅为历史画面。
 

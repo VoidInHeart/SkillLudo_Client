@@ -19,6 +19,8 @@ export class SkillDialogs {
   private locks = new Set<string>();
   private countdown: Label | null = null;
   private inMatch = false;
+  private now = () => Date.now();
+  public setClock(now: () => number): void { this.now = now; }
 
   public constructor(private readonly parent: Node, private readonly emit: (input: SkillInput) => void) {
     view.on('canvas-resize', this.resize, this); view.on('design-resolution-changed', this.resize, this);
@@ -46,7 +48,7 @@ export class SkillDialogs {
     if (this.mode === 'book') this.renderBook();
   }
   public update(): void {
-    if (this.countdown && this.snapshot?.reaction) this.countdown.string = `还有 ${Math.max(0, Math.ceil((this.snapshot.reaction.expiresAt - Date.now()) / 1000))} 秒 · 超时放弃`;
+    if (this.countdown && this.snapshot?.reaction) this.countdown.string = `还有 ${Math.max(0, Math.ceil((this.snapshot.reaction.expiresAt - this.now()) / 1000))} 秒 · 超时放弃`;
   }
   public openBook(inMatch = false): void {
     if (this.mode === 'reaction') return;

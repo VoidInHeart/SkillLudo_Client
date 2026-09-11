@@ -9,6 +9,7 @@ import { ActionSelection } from './ActionSelection';
 import { getPieceCell } from './PathData';
 import { FACTION_NAMES } from './SkillCatalog';
 import type { SkillInput } from '../ui/SkillDialogs';
+import type { LifecycleInput } from '../ui/MatchOverlays';
 import type { ActiveGameSummary, BoardCalibrationData, BoardCalibrationOpen, ChatEntry, ErrorPayload, GameSnapshot, MoveResult, ServerMessage, SkillEffect } from '../protocol/GameProtocol';
 import { GameUI, type AccountActionData } from '../ui/GameUI';
 
@@ -57,6 +58,7 @@ export class GameController extends Component {
 
   public onLoad(): void {
     this.responsiveCanvas = new ResponsiveCanvas();
+    this.gameUI?.setServerClock(() => this.network.serverNow());
     this.playerId = sys.localStorage.getItem(PLAYER_KEY) ?? '';
     this.sessionId = this.readAutoLoginSession();
     this.autoLoginRequested = !!this.sessionId;
@@ -73,6 +75,7 @@ export class GameController extends Component {
     this.boardController?.node.on('die-selected', this.onClickDie, this);
     this.gameUI?.node.on('color-preference', this.onColorPreference, this);
     this.gameUI?.node.on('skill-input', this.handleSkillInput, this);
+    this.gameUI?.node.on('lifecycle-input', this.handleLifecycleInput, this);
     this.boardController?.node.on('skill-cell-selected', this.onSkillCell, this);
     game.on(Game.EVENT_HIDE, this.onAppHide, this);
     game.on(Game.EVENT_SHOW, this.onAppShow, this);
@@ -100,6 +103,7 @@ export class GameController extends Component {
     this.boardController?.node.off('die-selected', this.onClickDie, this);
     this.gameUI?.node.off('color-preference', this.onColorPreference, this);
     this.gameUI?.node.off('skill-input', this.handleSkillInput, this);
+    this.gameUI?.node.off('lifecycle-input', this.handleLifecycleInput, this);
     this.boardController?.node.off('skill-cell-selected', this.onSkillCell, this);
     game.off(Game.EVENT_HIDE, this.onAppHide, this);
     game.off(Game.EVENT_SHOW, this.onAppShow, this);
@@ -135,7 +139,7 @@ export class GameController extends Component {
     this.send('START_GAME', { roomId: this.roomId });
   }
   public onClickRollDice(debugDice?: number): void {
-    if (!this.roomId || this.presentationBusy || this.commandPending || this.snapshot?.currentPlayerId !== this.playerId || this.snapshot.phase !== 'WAIT_ROLL') return;
+    if (!this.roomId || this.presentationBusy || this.commandPending || this.snapshot?.lifecycle?.pause || this.snapshot?.currentPlayerId !== this.playerId || this.snapshot.phase !== 'WAIT_ROLL') return;
     if (this.snapshot?.players.find((player) => player.id === this.playerId)?.aiControlled) return;
     if (debugDice !== undefined && (!Number.isInteger(debugDice) || debugDice < 1 || debugDice > 6)) return;
     this.commandPending = true;
@@ -147,7 +151,7 @@ export class GameController extends Component {
     const pieceId = typeof pieceOrEvent === 'string' ? pieceOrEvent : customPieceId;
     const snapshot = this.snapshot;
     const localPlayer = snapshot?.players.find((player) => player.id === this.playerId);
-    if (!snapshot || this.presentationBusy || this.commandPending || localPlayer?.aiControlled || snapshot.currentPlayerId !== this.playerId) return;
+    if (!snapshot || snapshot.lifecycle?.pause || this.presentationBusy || this.commandPending || localPlayer?.aiControlled || snapshot.currentPlayerId !== this.playerId) return;
     if (this.skillTarget) { this.onSkillPiece(pieceId); return; }
     if (snapshot.phase === 'WAIT_SELECT_DIE') { this.commitSelection(pieceId); return; }
     // A trustee may have reached the legacy piece phase before manual control resumed.
@@ -159,7 +163,7 @@ export class GameController extends Component {
 
   private commitSelection(pieceId?: string): void {
     const state = this.snapshot;
-    if (!state || this.commandPending || this.presentationBusy) return;
+    if (!state || state.lifecycle?.pause || this.commandPending || this.presentationBusy) return;
     const option = this.selection.current(state, this.playerId);
     if (!option || (pieceId ? !option.movablePieceIds.includes(pieceId) : option.movablePieceIds.length > 0)) return;
     this.commandPending = true;
@@ -190,6 +194,7 @@ export class GameController extends Component {
         break;
       }
       case 'EXIT_GAME': if (this.roomId) this.send('EXIT_GAME', { roomId: this.roomId }); break;
+      case 'TECH_PAUSE': if (this.roomId) this.send('REQUEST_PAUSE', { roomId: this.roomId }); break;
       default: break;
     }
   }
@@ -229,6 +234,9 @@ export class GameController extends Component {
       });
     });
     this.network.on('GAME_OVER', (message) => this.queueSnapshot(message.data as GameSnapshot));
+    this.network.on('SKILL_READY', (message) => {
+      if ((message.data as { playerId: string }).playerId === this.playerId) this.gameUI?.flashSkills();
+    });
     this.network.on('CHAT_HISTORY', (message) => {
       const data = message.data as { entries?: ChatEntry[] };
       this.gameUI?.setChatEntries(data.entries ?? []);
@@ -266,7 +274,7 @@ export class GameController extends Component {
       this.boardController?.setBoardVisible(false);
       this.gameUI?.showCalibrationStatus(null);
       this.gameUI?.showHome();
-      this.gameUI?.showStatus('已退出对局，AI正在托管');
+      this.gameUI?.showStatus('已离开对局，可从未结束对局入口返回');
     });
     this.network.on('ACTIVE_GAMES', (message) => {
       const data = message.data as { games?: ActiveGameSummary[] };
@@ -371,7 +379,8 @@ export class GameController extends Component {
   private applySnapshotUnlessExited(snapshot: GameSnapshot): void {
     if (snapshot.roomId === this.exitedGameRoomId) {
       const local = snapshot.players.find((player) => player.id === this.playerId);
-      this.gameUI?.setActiveGames(snapshot.roomStatus === 'PLAYING' && local ? [{ roomId: snapshot.roomId, color: local.color, turnNumber: snapshot.turnNumber, playerCount: snapshot.players.length, status: snapshot.roomStatus }] : []);
+      const spectator = snapshot.spectators?.some((player) => player.id === this.playerId);
+      this.gameUI?.setActiveGames(snapshot.roomStatus === 'PLAYING' && (local || spectator) ? [{ roomId: snapshot.roomId, color: local?.color, spectating: spectator, turnNumber: snapshot.turnNumber, playerCount: snapshot.players.length + (snapshot.spectators?.length ?? 0), status: snapshot.roomStatus }] : []);
       return;
     }
     this.applySnapshot(snapshot);
@@ -382,21 +391,21 @@ export class GameController extends Component {
   }
   public onClickDie(index: number): void {
     const state = this.snapshot;
-    if (!state || this.skillTarget || this.commandPending || this.presentationBusy || state.currentPlayerId !== this.playerId || state.phase !== 'WAIT_SELECT_DIE'
+    if (!state || state.lifecycle?.pause || this.skillTarget || this.commandPending || this.presentationBusy || state.currentPlayerId !== this.playerId || state.phase !== 'WAIT_SELECT_DIE'
       || state.players.find((p) => p.id === this.playerId)?.aiControlled || (index !== 0 && index !== 1)) return;
     const option = state.actionOptions?.find((option) => option.dieIndex === index);
     if (option) this.selectOption(option.id);
   }
   public selectOption(optionId: string): void {
-    if (!this.snapshot || this.commandPending || this.presentationBusy) return;
+    if (!this.snapshot || this.snapshot.lifecycle?.pause || this.commandPending || this.presentationBusy) return;
     if (this.selection.choose(this.snapshot, this.playerId, optionId)) this.refreshMovable();
   }
-  private onColorPreference(color: PlayerColor | null): void {
+  private onColorPreference(color: PlayerColor | 'SPECTATOR' | null): void {
     if (this.snapshot?.roomStatus === 'WAITING') this.send('SET_COLOR_PREFERENCE', { roomId: this.roomId, color });
   }
   private handleSkillInput(input: SkillInput): void {
     const state = this.snapshot, local = state?.players.find((p) => p.id === this.playerId);
-    if (!state || !local || local.aiControlled || this.commandPending || this.presentationBusy) return;
+    if (!state || state.lifecycle?.pause || !local || local.aiControlled || this.commandPending || this.presentationBusy) return;
     if (input.type === 'option') { this.selectOption(input.optionId); return; }
     if (input.type === 'target') {
       if (!state.skills.some((s) => s.playerId === this.playerId && s.skillId === input.skillId && s.available)) return;
@@ -434,7 +443,7 @@ export class GameController extends Component {
   private refreshMovable(): void {
     const state = this.snapshot;
     const option = state ? this.selection.current(state, this.playerId) : null;
-    const allowed = !this.presentationBusy && !this.commandPending && state?.currentPlayerId === this.playerId
+    const allowed = !this.presentationBusy && !this.commandPending && !state?.lifecycle?.pause && state?.currentPlayerId === this.playerId
       && !state.players.find((p) => p.id === this.playerId)?.aiControlled;
     const ids = option?.movablePieceIds ?? (state?.phase === 'WAIT_SELECT_PIECE' ? state.movablePieceIds : []);
     this.boardController?.setActionPreview(option?.movePreviews ?? state?.movePreviews ?? {});
@@ -453,6 +462,11 @@ export class GameController extends Component {
   }
   private onAppHide(): void { this.appHidden = true; this.resetPresentation(); }
   private onAppShow(): void { this.appHidden = false; this.resetPresentation(); if (this.roomId) this.send('RECONNECT', { roomId: this.roomId }); }
+
+  private handleLifecycleInput(input: LifecycleInput): void {
+    if (input.type === 'EXIT_GAME' || input.type === 'GAME_CHAT') { this.handleUiAction(input.type); return; }
+    if (this.roomId && 'voteId' in input) this.send(input.type, { roomId: this.roomId, voteId: input.voteId, agree: input.agree });
+  }
 
   private send(type: Parameters<NetworkManager['send']>[0], data: Record<string, unknown>): void {
     try { this.network.send(type, data); } catch (error) { this.commandPending = false; this.gameUI?.showError(error instanceof Error ? error.message : '发送失败'); }
