@@ -2,8 +2,8 @@ import { Button, Color, Graphics, Label, Layers, Node, UITransform, view } from 
 import type { ActionOption, GameSnapshot, PlayerColor } from '../protocol/GameProtocol';
 import { BOARD_COLORS } from '../game/BoardGeometry';
 import { gameViewport } from '../game/GameViewport';
+import { FACTION_NAMES as names } from '../game/SkillCatalog';
 
-const names: Record<PlayerColor, string> = { RED: '红', YELLOW: '黄', BLUE: '蓝', GREEN: '绿' };
 const WHITE = new Color('#edf4fa');
 const MUTED = new Color('#a4b8cc');
 
@@ -20,6 +20,7 @@ export class MatchHud {
   private admin = false;
   private calibrationText = '';
   private selectedOption: ActionOption | null = null;
+  private skillTarget = '';
   public constructor(parent: Node, private readonly emit: (action: string) => void) {
     this.root = this.node('MatchHud', parent, 286, 664);
     this.rebuild();
@@ -33,6 +34,7 @@ export class MatchHud {
   public requestPending(): void { this.pending = true; this.refresh(); }
   public clearPending(): void { this.pending = false; this.refresh(); }
   public setSelectedOption(option: ActionOption | null): void { this.selectedOption = option; this.refresh(); }
+  public setSkillTarget(message: string): void { this.skillTarget = message; this.refresh(); }
   public showStatus(message: string): void { this.text('status', message); }
   public showCalibration(message: string): void { this.calibrationText = message; this.text('calibration', message); }
   public render(snapshot: GameSnapshot, playerId: string): void {
@@ -56,7 +58,7 @@ export class MatchHud {
     this.button('SELECT_DIE_1', '—', p ? width * 0.23 + 55 : 59, p ? top - 108 : top - 254, 100, 58, 25);
     this.label('status', '', 0, p ? -4 : top - 314, width - 20, 44, 16, WHITE);
     this.button('ROLL_DICE', '掷出双骰', p ? -width * 0.24 : 0, p ? -59 : top - 369, p ? width * 0.42 : width - 42, 44, 19);
-    this.label('skills', '阵营技能 · 待解锁', p ? width * 0.23 : 0, p ? -62 : top - 414, p ? width * 0.42 : width - 20, 28, 14, MUTED);
+    this.button('SKILLS', '阵营技能 / 图鉴', p ? width * 0.23 : 0, p ? -59 : top - 416, p ? width * 0.42 : width - 42, 36, 16);
     const actions = [['GAME_CHAT', '聊天'], ['AI_TAKEOVER', 'AI托管'], ['EXIT_GAME', '退出'], ['DEBUG_DICE', '调试'], ['CALIBRATE', '校准']];
     actions.forEach(([action, title], index) => {
       const x = p ? (index - 2) * Math.min(108, (width - 28) / 5) : (index % 3 - 1) * 85;
@@ -73,9 +75,9 @@ export class MatchHud {
     const local = snapshot.players.find((p) => p.id === this.localPlayerId);
     const current = snapshot.players.find((p) => p.id === snapshot.currentPlayerId);
     const myTurn = current?.id === this.localPlayerId && !local?.aiControlled;
-    const enabled = !!myTurn && !this.busy && !this.pending;
+    const enabled = !!myTurn && !this.busy && !this.pending && !this.skillTarget;
     this.text('room', `${snapshot.roomId} · 第 ${snapshot.turnNumber} 回合`);
-    this.text('color', local ? `${names[local.color]}色阵营 · 你的机场在左下` : '观战');
+    this.text('color', local ? `${names[local.color]} · 你的机场在左下` : '观战');
     const lines = snapshot.players.map((p) => `${p.id === current?.id ? '▶ ' : ''}${names[p.color]} · ${p.nickname.slice(0, 9)}${p.isBot || p.aiControlled ? ' [AI]' : ''}`);
     this.text('players', lines.join('\n'));
     const pair = snapshot.diceChoices;
@@ -92,12 +94,17 @@ export class MatchHud {
     this.enable('AI_TAKEOVER', snapshot.roomStatus === 'PLAYING');
     this.enable('EXIT_GAME', snapshot.roomStatus === 'PLAYING');
     this.enable('CALIBRATE', this.admin && !this.busy);
+    this.enable('SKILLS', snapshot.phase !== 'WAIT_REACTION');
+    this.text('SKILLS', this.skillTarget ? '取消目标选择' : '阵营技能 / 图鉴');
     this.text('AI_TAKEOVER', local?.aiControlled ? '取消托管' : 'AI托管');
     let status = myTurn ? snapshot.phase === 'WAIT_SELECT_DIE' ? '点击棋盘骰子或点数卡选择' : snapshot.phase === 'WAIT_SELECT_PIECE' ? '请选择高亮飞机' : '轮到你投骰子' : `等待 ${current?.nickname ?? '玩家'}`;
     if (myTurn && snapshot.phase === 'WAIT_SELECT_DIE' && this.selectedOption) status = this.selectedOption.movablePieceIds.length
       ? `预选 ${this.selectedOption.dice} · 点击高亮飞机出发\n点击另一枚骰子可更换点数` : `预选 ${this.selectedOption.dice} · 无棋可动\n可换点数，或确认跳过`;
     if (this.busy) status = '正在播放棋局动作…';
     if (this.pending) status = '正在等待服务器…';
+    if (snapshot.rescuePieceIds?.length) status = `巴黎救援 · 剩余 ${snapshot.rescuePieceIds.length} 架\n${status}`;
+    if (snapshot.phase === 'WAIT_REACTION') status = '等待法国选择是否锁定飞机…';
+    if (this.skillTarget && !this.pending) status = this.skillTarget;
     if (snapshot.phase === 'GAME_OVER') status = `本局获胜：${snapshot.players.find((p) => p.id === snapshot.rankings[0])?.nickname ?? '对局结束'}`;
     this.text('status', status);
     if (local) this.labels.get('color')!.color = new Color(BOARD_COLORS[local.color]);

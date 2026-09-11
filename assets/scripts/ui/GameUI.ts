@@ -3,6 +3,8 @@ import type { ActionOption, ChatEntry, GameSnapshot, PlayerColor, PlayerPublicSt
 import type { ActiveGameSummary, BoardCalibrationOpen } from '../protocol/GameProtocol';
 
 import { MatchHud } from './MatchHud';
+import { SkillDialogs, type SkillInput } from './SkillDialogs';
+import { FACTION_NAMES } from '../game/SkillCatalog';
 
 const { ccclass, property } = _decorator;
 type Screen = 'HOME' | 'AUTH' | 'ROOM' | 'GAME';
@@ -26,6 +28,9 @@ export class GameUI extends Component {
   @property(Button) public startButton: Button | null = null;
 
   private matchHud: MatchHud | null = null;
+  private skills: SkillDialogs | null = null;
+  private presentationBusy = false;
+  private requestPending = false;
   private preferenceLabel: Label | null = null;
   private preferenceMenu: Node | null = null;
   private preferredColor: PlayerColor | null = null;
@@ -70,6 +75,9 @@ export class GameUI extends Component {
     this.installWebInputStyle();
     if (!this.statusLabel || !this.roomLabel || !this.rollButton || !this.readyButton || !this.startButton) this.buildRuntimeUi();
     this.showAuthPage();
+    view.on('canvas-resize', this.resizeSkillButtons, this);
+    view.on('design-resolution-changed', this.resizeSkillButtons, this);
+    this.scheduleOnce(this.resizeSkillButtons, 0);
   }
 
   public showHome(): void { this.setScreen('HOME'); }
@@ -84,10 +92,25 @@ export class GameUI extends Component {
   public showCalibrationStatus(target: BoardCalibrationOpen | null): void {
     this.matchHud?.showCalibration(target ? `校准 ${target.index}/${target.total}：${target.key}` : '');
   }
-  public onDestroy(): void { this.matchHud?.destroy(); }
-  public setPresentationBusy(busy: boolean): void { this.matchHud?.setBusy(busy); }
-  public setDiceRequestPending(): void { this.matchHud?.requestPending(); }
+  public onDestroy(): void {
+    this.matchHud?.destroy(); this.skills?.destroy();
+    view.off('canvas-resize', this.resizeSkillButtons, this); view.off('design-resolution-changed', this.resizeSkillButtons, this);
+  }
+  private resizeSkillButtons(): void {
+    const size = view.getVisibleSize();
+    for (const root of [this.homeRoot, this.authRoot]) root?.getChildByName('技能图鉴Button')?.setPosition(size.width / 2 - 90, size.height / 2 - 42);
+  }
+  public update(): void { this.skills?.update(); }
+  public setPresentationBusy(busy: boolean): void { this.presentationBusy = busy; this.matchHud?.setBusy(busy); this.skills?.setBusy(busy || this.requestPending); }
+  public setDiceRequestPending(): void { this.requestPending = true; this.matchHud?.requestPending(); this.skills?.setBusy(true); }
   public setSelectedOption(option: ActionOption | null): void { this.matchHud?.setSelectedOption(option); }
+  public showSkills(inMatch = false): void { this.skillDialogs().openBook(inMatch); }
+  public closeSkills(): void { this.skills?.close(); }
+  public setSkillTarget(message: string): void { this.matchHud?.setSkillTarget(message); }
+  public confirmSkillTarget(description: string, input: SkillInput, cancel: () => void): void { this.skillDialogs().confirmTarget(description, input, cancel); }
+  private skillDialogs(): SkillDialogs {
+    return this.skills ??= new SkillDialogs(this.getRuntimeRoot(), (input) => this.node.emit('skill-input', input));
+  }
 
   /** Updated after an account session is authenticated. The side drawer is intentionally
    * local-account based for now, leaving a stable place to attach a WeChat avatar later. */
@@ -99,14 +122,19 @@ export class GameUI extends Component {
   public setGameMode(inGame: boolean): void { this.setScreen(inGame ? 'GAME' : 'HOME'); }
 
   public render(snapshot: GameSnapshot, localPlayerId: string): void {
+    this.requestPending = false;
     this.localPlayerId = localPlayerId;
     this.updatePlayerColors(snapshot.players);
     if (snapshot.roomStatus === 'WAITING') { this.renderRoom(snapshot, localPlayerId); return; }
     this.setScreen('GAME');
     this.matchHud?.render(snapshot, localPlayerId);
+    this.skillDialogs().setBusy(this.presentationBusy);
+    this.skillDialogs().sync(snapshot, localPlayerId);
   }
 
   public showError(message: string): void {
+    this.requestPending = false;
+    this.skills?.setBusy(this.presentationBusy);
     this.matchHud?.clearPending();
     if (this.currentScreen === 'ROOM') this.setText(this.roomNoticeLabel, `提示：${message}`);
     else if (this.currentScreen === 'AUTH') this.setText(this.authNoticeLabel, `提示：${message}`);
@@ -265,6 +293,7 @@ export class GameUI extends Component {
   }
 
   private setScreen(screen: Screen): void {
+    if (screen !== this.currentScreen) this.skills?.close();
     if (screen !== 'ROOM') { this.preferenceMenu?.destroy(); this.preferenceMenu = null; }
     this.currentScreen = screen;
     this.matchHud?.setVisible(screen === 'GAME');
@@ -334,6 +363,7 @@ export class GameUI extends Component {
     this.homeConnectionLabel = this.addLabel(root, 'HomeConnection', '连接游戏服务器中…', new Vec3(0, layout.connectionY, 0), 500, 28, layout.portrait ? 18 : 15, new Color(66, 131, 101));
     this.addLabel(root, 'RoomHint', '创建房间，邀请朋友一起起飞', new Vec3(0, layout.hintY, 0), 500, 28, layout.portrait ? 17 : 15, new Color(106, 126, 155));
     this.createHomeAvatar(root, size);
+    this.createModalButton(root, '技能图鉴', new Vec3(size.width / 2 - 90, size.height / 2 - 42), new Color('#287bc0'), () => this.showSkills(), 136, 40, 18);
     const activeGames = new Node('ActiveGames'); activeGames.setParent(root); activeGames.layer = Layers.Enum.UI_2D; activeGames.addComponent(UITransform).setContentSize(330, 126);
     activeGames.setPosition(size.width / 2 - 190, size.height / 2 - 145, 0); this.activeGamesRoot = activeGames; this.renderActiveGames();
     root.setSiblingIndex(0); this.homeRoot = root;
@@ -356,6 +386,7 @@ export class GameUI extends Component {
     this.createAuthTab(card, 'REGISTER', '注册', new Vec3(58, compact ? 65 : 86, 0));
     const form = new Node('AuthForm'); form.setParent(card); form.layer = Layers.Enum.UI_2D; form.addComponent(UITransform).setContentSize(500, 260);
     this.authRoot = root; this.authCard = card; this.authFormRoot = form;
+    this.createModalButton(root, '技能图鉴', new Vec3(size.width / 2 - 90, size.height / 2 - 42), new Color('#287bc0'), () => this.showSkills(), 136, 40, 18);
     this.updateAuthTabs();
     root.setSiblingIndex(0);
   }
@@ -794,7 +825,7 @@ export class GameUI extends Component {
     players.forEach((player) => this.playerColors.set(player.id, player.color));
     this.renderChatEntries();
   }
-  private colorName(color: PlayerColor): string { return ({ RED: '红色', YELLOW: '黄色', BLUE: '蓝色', GREEN: '绿色' } as Record<PlayerColor, string>)[color]; }
+  private colorName(color: PlayerColor): string { return FACTION_NAMES[color]; }
   private playerNameColor(color: PlayerColor | undefined): Color {
     // Red nicknames use orange rather than red to preserve contrast on white.
     return ({ RED: new Color(232, 125, 43), YELLOW: new Color(189, 143, 25), BLUE: new Color(43, 113, 210), GREEN: new Color(37, 144, 83) } as Record<PlayerColor, Color>)[color ?? 'BLUE'];

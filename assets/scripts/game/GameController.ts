@@ -6,7 +6,10 @@ import { BoardController } from './BoardController';
 import { NetworkManager } from '../network/NetworkManager';
 import { resolveServerUrl } from '../network/ServerEndpoint';
 import { ActionSelection } from './ActionSelection';
-import type { ActiveGameSummary, BoardCalibrationData, BoardCalibrationOpen, ChatEntry, ErrorPayload, GameSnapshot, MoveResult, ServerMessage } from '../protocol/GameProtocol';
+import { getPieceCell } from './PathData';
+import { FACTION_NAMES } from './SkillCatalog';
+import type { SkillInput } from '../ui/SkillDialogs';
+import type { ActiveGameSummary, BoardCalibrationData, BoardCalibrationOpen, ChatEntry, ErrorPayload, GameSnapshot, MoveResult, ServerMessage, SkillEffect } from '../protocol/GameProtocol';
 import { GameUI, type AccountActionData } from '../ui/GameUI';
 
 const { ccclass, property } = _decorator;
@@ -29,6 +32,7 @@ export class GameController extends Component {
   private presentationBusy = false;
   private readonly selection = new ActionSelection();
   private commandPending = false;
+  private skillTarget: { skillId: 'uk-sun' | 'us-bomb'; pieceIds: string[] } | null = null;
   private appHidden = false;
   private responsiveCanvas: ResponsiveCanvas | null = null;
   private readonly presentation = new PresentationQueue((busy) => {
@@ -68,6 +72,8 @@ export class GameController extends Component {
     this.gameUI?.node.on('rejoin-game', this.handleRejoinGame, this);
     this.boardController?.node.on('die-selected', this.onClickDie, this);
     this.gameUI?.node.on('color-preference', this.onColorPreference, this);
+    this.gameUI?.node.on('skill-input', this.handleSkillInput, this);
+    this.boardController?.node.on('skill-cell-selected', this.onSkillCell, this);
     game.on(Game.EVENT_HIDE, this.onAppHide, this);
     game.on(Game.EVENT_SHOW, this.onAppShow, this);
     this.bindNetworkEvents();
@@ -93,6 +99,8 @@ export class GameController extends Component {
     this.gameUI?.node.off('rejoin-game', this.handleRejoinGame, this);
     this.boardController?.node.off('die-selected', this.onClickDie, this);
     this.gameUI?.node.off('color-preference', this.onColorPreference, this);
+    this.gameUI?.node.off('skill-input', this.handleSkillInput, this);
+    this.boardController?.node.off('skill-cell-selected', this.onSkillCell, this);
     game.off(Game.EVENT_HIDE, this.onAppHide, this);
     game.off(Game.EVENT_SHOW, this.onAppShow, this);
     this.resetPresentation();
@@ -140,6 +148,7 @@ export class GameController extends Component {
     const snapshot = this.snapshot;
     const localPlayer = snapshot?.players.find((player) => player.id === this.playerId);
     if (!snapshot || this.presentationBusy || this.commandPending || localPlayer?.aiControlled || snapshot.currentPlayerId !== this.playerId) return;
+    if (this.skillTarget) { this.onSkillPiece(pieceId); return; }
     if (snapshot.phase === 'WAIT_SELECT_DIE') { this.commitSelection(pieceId); return; }
     // A trustee may have reached the legacy piece phase before manual control resumed.
     if (snapshot.phase !== 'WAIT_SELECT_PIECE' || !snapshot.movablePieceIds.includes(pieceId)) return;
@@ -166,6 +175,7 @@ export class GameController extends Component {
       case 'QUICK_MATCH': this.gameUI?.showStatus('快速匹配暂未开放'); break;
       case 'READY': this.onClickReady(); break;
       case 'START_GAME': this.onClickStartGame(); break;
+      case 'SKILLS': if (this.skillTarget) this.cancelSkillTarget(); else this.gameUI?.showSkills(true); break;
       case 'CHAT':
       case 'GAME_CHAT': if (this.snapshot) this.gameUI?.showChatDialog(this.snapshot, this.playerId); break;
       case 'LEAVE_ROOM': this.onClickLeaveRoom(); break;
@@ -208,6 +218,14 @@ export class GameController extends Component {
         this.gameUI?.closeMoveConfirmation();
         this.boardController?.clearMovePreview();
         if (!this.appHidden && this.snapshot?.roomId !== this.exitedGameRoomId) await this.boardController?.playMove(message.data as MoveResult);
+      });
+    });
+    this.network.on('SKILL_EFFECT', (message) => {
+      const effect = message.data as SkillEffect;
+      this.presentation.enqueue(async () => {
+        this.cancelSkillTarget();
+        this.gameUI?.showStatus(effect.message);
+        if (!this.appHidden && this.snapshot?.roomId !== this.exitedGameRoomId) await this.boardController?.playSkill(effect);
       });
     });
     this.network.on('GAME_OVER', (message) => this.queueSnapshot(message.data as GameSnapshot));
@@ -336,6 +354,7 @@ export class GameController extends Component {
   private applySnapshot(snapshot: GameSnapshot): void {
     if (snapshot.protocolVersion !== PROTOCOL_VERSION) { this.gameUI?.showError('前后端版本不一致，请更新后再进入游戏'); return; }
     this.commandPending = false;
+    this.cancelSkillTarget();
     if (snapshot.phase !== 'WAIT_SELECT_PIECE' || snapshot.currentPlayerId !== this.playerId) {
       this.gameUI?.closeMoveConfirmation();
       this.boardController?.clearMovePreview();
@@ -363,7 +382,7 @@ export class GameController extends Component {
   }
   public onClickDie(index: number): void {
     const state = this.snapshot;
-    if (!state || this.commandPending || this.presentationBusy || state.currentPlayerId !== this.playerId || state.phase !== 'WAIT_SELECT_DIE'
+    if (!state || this.skillTarget || this.commandPending || this.presentationBusy || state.currentPlayerId !== this.playerId || state.phase !== 'WAIT_SELECT_DIE'
       || state.players.find((p) => p.id === this.playerId)?.aiControlled || (index !== 0 && index !== 1)) return;
     const option = state.actionOptions?.find((option) => option.dieIndex === index);
     if (option) this.selectOption(option.id);
@@ -375,6 +394,43 @@ export class GameController extends Component {
   private onColorPreference(color: PlayerColor | null): void {
     if (this.snapshot?.roomStatus === 'WAITING') this.send('SET_COLOR_PREFERENCE', { roomId: this.roomId, color });
   }
+  private handleSkillInput(input: SkillInput): void {
+    const state = this.snapshot, local = state?.players.find((p) => p.id === this.playerId);
+    if (!state || !local || local.aiControlled || this.commandPending || this.presentationBusy) return;
+    if (input.type === 'option') { this.selectOption(input.optionId); return; }
+    if (input.type === 'target') {
+      if (!state.skills.some((s) => s.playerId === this.playerId && s.skillId === input.skillId && s.available)) return;
+      this.skillTarget = { skillId: input.skillId, pieceIds: [] };
+      if (input.skillId === 'us-bomb') this.boardController?.showSkillCells();
+      this.refreshMovable(); return;
+    }
+    const { type: _type, ...command } = input;
+    this.cancelSkillTarget(); this.commandPending = true; this.gameUI?.setDiceRequestPending();
+    this.send('USE_SKILL', { roomId: state.roomId, rollId: state.rollId, ...command });
+    this.refreshMovable();
+  }
+  private onSkillPiece(pieceId: string): void {
+    const target = this.skillTarget, state = this.snapshot;
+    if (!target || target.skillId !== 'uk-sun' || !state || !this.swapTargets().includes(pieceId)) return;
+    if (target.pieceIds.includes(pieceId)) target.pieceIds = target.pieceIds.filter((id) => id !== pieceId);
+    else target.pieceIds.push(pieceId);
+    this.refreshMovable();
+    if (target.pieceIds.length !== 2) return;
+    const names = target.pieceIds.map((id) => {
+      const piece = state.pieces.find((p) => p.id === id)!;
+      return `${FACTION_NAMES[piece.color]} ${id.split('-').pop()} 号飞机（${getPieceCell(piece)}）`;
+    });
+    this.gameUI?.confirmSkillTarget(`日不落帝国\n交换 ${names.join(' 与 ')}\n本局仅可发动一次`,
+      { type: 'cast', skillId: 'uk-sun', targetPieceIds: [...target.pieceIds] }, () => this.cancelSkillTarget());
+  }
+  private onSkillCell(cell: string): void {
+    if (this.skillTarget?.skillId !== 'us-bomb' || this.commandPending || this.presentationBusy) return;
+    this.boardController?.showSkillCells(cell);
+    this.gameUI?.confirmSkillTarget(`核弹轰炸 · 中心 ${cell}\n击落高亮的连续 5 格内所有飞机，包含己方与锁定飞机。\n本局仅可发动一次`,
+      { type: 'cast', skillId: 'us-bomb', targetCell: cell }, () => this.cancelSkillTarget());
+  }
+  private swapTargets(): string[] { return this.snapshot?.pieces.filter((p) => !p.locked && getPieceCell(p)?.startsWith('M')).map((p) => p.id) ?? []; }
+  private cancelSkillTarget(): void { this.skillTarget = null; this.boardController?.clearSkillCells(); this.gameUI?.setSkillTarget(''); this.refreshMovable(); }
   private refreshMovable(): void {
     const state = this.snapshot;
     const option = state ? this.selection.current(state, this.playerId) : null;
@@ -382,11 +438,15 @@ export class GameController extends Component {
       && !state.players.find((p) => p.id === this.playerId)?.aiControlled;
     const ids = option?.movablePieceIds ?? (state?.phase === 'WAIT_SELECT_PIECE' ? state.movablePieceIds : []);
     this.boardController?.setActionPreview(option?.movePreviews ?? state?.movePreviews ?? {});
-    this.boardController?.setMovablePieces(allowed ? ids : []);
+    this.boardController?.setMovablePieces(allowed ? this.skillTarget?.skillId === 'uk-sun' ? this.swapTargets() : this.skillTarget ? [] : ids : []);
     this.gameUI?.setSelectedOption(option);
+    if (this.skillTarget) this.gameUI?.setSkillTarget(this.skillTarget.skillId === 'uk-sun'
+      ? `日不落帝国 · 已选择 ${this.skillTarget.pieceIds.length}/2 架\n点击公共航线上任意两架未锁定飞机` : '核弹轰炸 · 点击公共航线的一格\n可用“取消目标选择”返回');
   }
   private resetPresentation(): void {
     this.selection.clear();
+    this.cancelSkillTarget();
+    this.gameUI?.closeSkills();
     this.boardController?.cancelAnimations();
     this.presentation.reset();
     this.commandPending = false;

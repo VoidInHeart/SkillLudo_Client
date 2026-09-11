@@ -1,7 +1,7 @@
 import { _decorator, Canvas, Color, Component, Graphics, js, Label, Layers, Node, UITransform, Vec3, view } from 'cc';
-import type { BoardCalibrationData, BoardCalibrationOpen, DicePair, GameSnapshot, MoveResult, Piece, PlayerColor } from '../protocol/GameProtocol';
+import type { BoardCalibrationData, BoardCalibrationOpen, CaptureOutcome, DicePair, GameSnapshot, MoveResult, Piece, PlayerColor, SkillEffect } from '../protocol/GameProtocol';
 import { BoardLayout } from './BoardLayout';
-import { BOARD_COLORS, VIEW_TURNS, rotateBoard } from './BoardGeometry';
+import { BOARD_COLORS, VIEW_TURNS, rotateBoard, trackKey } from './BoardGeometry';
 import { drawBoardArtwork } from './BoardArtwork';
 import { BoardScene3D, type TokenActor } from './BoardScene3D';
 import { BoardCalibrationView } from './BoardCalibrationView';
@@ -30,6 +30,7 @@ export class BoardController extends Component {
   private turns = 0;
   private epoch = 0;
   private target!: Node;
+  private skillCells: Node | null = null;
 
   public onLoad(): void {
     let canvas: Node | null = this.node;
@@ -76,7 +77,7 @@ export class BoardController extends Component {
     for (const piece of snapshot.pieces) {
       const actor = this.actor(piece);
       this.scene3D.showActor(actor, true);
-      const stack = snapshot.pieces.filter((p) => p.color === piece.color && p.state === piece.state && p.progress === piece.progress);
+      const stack = snapshot.pieces.filter((p) => p.color === piece.color && p.state === piece.state && p.progress === piece.progress && !!p.detour === !!piece.detour);
       const inAirport = piece.state === 'AIRPORT' || piece.state === 'FINISHED';
       const level = inAirport ? 0 : stack.findIndex((p) => p.id === piece.id);
       this.scene3D.place(actor, this.piecePoint(piece), level * 7, piece.state === 'FINISHED' ? 0.86 : 1);
@@ -84,6 +85,7 @@ export class BoardController extends Component {
       const badge = actor.hit.getChildByName('Badge')!.getComponent(Label)!;
       badge.string = piece.state === 'FINISHED' ? '✓' : level > 0 && level === stack.length - 1 ? String(stack.length) : '';
       badge.color = piece.state === 'FINISHED' ? new Color('#a77713') : new Color('#ffffff');
+      actor.hit.getChildByName('LockBadge')!.active = !!piece.locked;
     }
     this.dice.restore(snapshot.diceChoices, snapshot.rollId, snapshot.phase === 'WAIT_SELECT_DIE');
     this.setMovablePieces(snapshot.movablePieceIds);
@@ -105,7 +107,7 @@ export class BoardController extends Component {
   public showMovePreview(pieceId: string, dice: number): MovePreview | null {
     const piece = this.pieces.get(pieceId), result = this.previews[pieceId];
     if (!piece || !result || !this.movable.has(pieceId)) return null;
-    const destination = this.toView(BoardLayout.mainPathPosition(piece.color, result.toProgress));
+    const destination = this.toView(BoardLayout.mainPathPosition(piece.color, result.toProgress, result.toDetour));
     const graphics = this.target.getComponent(Graphics)!;
     graphics.clear(); graphics.strokeColor = new Color(BOARD_COLORS[piece.color]); graphics.lineWidth = 4;
     graphics.circle(0, 0, 23); graphics.stroke();
@@ -119,6 +121,42 @@ export class BoardController extends Component {
   }
   public clearMovePreview(): void { if (this.target) this.target.active = false; }
 
+  /** Common-ring hit targets use the same calibrated centres and view rotation as pieces. */
+  public showSkillCells(selected?: string): void {
+    this.clearSkillCells();
+    const root = new Node('BombTargets'); root.layer = Layers.Enum.UI_2D; root.setParent(this.root); this.skillCells = root;
+    const center = selected ? Number(selected.slice(1)) : -100;
+    for (let index = 0; index < 52; index += 1) {
+      const node = new Node(`Target-M${index}`); node.layer = Layers.Enum.UI_2D; node.setParent(root);
+      node.addComponent(UITransform).setContentSize(33, 33); node.setPosition(this.cellPoint(`M${index}`));
+      const delta = (index - center + 52) % 52;
+      const inRange = !!selected && (delta <= 2 || delta >= 50);
+      const g = node.addComponent(Graphics); g.fillColor = new Color(inRange ? '#e95639' : '#233c53');
+      g.circle(0, 0, inRange ? 16 : 7); g.fill(); g.strokeColor = new Color('#f8d776'); g.lineWidth = inRange ? 3 : 1; g.circle(0, 0, 16); g.stroke();
+      node.on(Node.EventType.TOUCH_END, () => this.node.emit('skill-cell-selected', `M${index}`));
+    }
+  }
+  public clearSkillCells(): void { if (this.skillCells) { this.skillCells.active = false; this.skillCells.removeFromParent(); this.skillCells.destroy(); this.skillCells = null; } }
+
+  public async playSkill(effect: SkillEffect): Promise<void> {
+    const epoch = this.epoch;
+    this.clearSkillCells(); this.setMovablePieces([]); this.dice.hide();
+    const tasks: Promise<unknown>[] = [];
+    for (const move of effect.movedPieces ?? []) {
+      const actor = this.actors.get(move.before.id);
+      if (!actor) continue;
+      const from = this.piecePoint(move.before), to = this.piecePoint(move.after);
+      tasks.push(this.timeline.animate(.85, (t) => {
+        if (epoch !== this.epoch) return;
+        this.scene3D.place(actor, Vec3.lerp(new Vec3(), from, to, smooth(t)), Math.sin(Math.PI * t) * 105);
+        actor.model.setRotationFromEuler(12, Math.sin(t * Math.PI) * 35, t * 360);
+      }));
+    }
+    for (const cell of effect.targetCells ?? []) tasks.push(this.impact(this.cellPoint(cell), new Color('#ff734f'), .8));
+    for (const outcome of effect.captures ?? []) tasks.push(this.capture(outcome.pieceId, epoch, outcome));
+    await Promise.all(tasks);
+  }
+
   public async playMove(result: MoveResult): Promise<void> {
     const piece = this.pieces.get(result.pieceId), actor = this.actors.get(result.pieceId);
     if (!piece || !actor) return;
@@ -129,12 +167,12 @@ export class BoardController extends Component {
     const captured = new Set<string>();
     const capture = (id: string): void => {
       if (captured.has(id)) return;
-      captured.add(id); captureTasks.push(this.capture(id, epoch));
+      captured.add(id); captureTasks.push(this.capture(id, epoch, result.captureOutcomes?.find((outcome) => outcome.pieceId === id)));
     };
     for (const segment of result.segments) {
       const steps = segment.kind === 'WALK' ? segment.path : [segment.toProgress];
       for (const progress of steps) {
-        const destination = this.toView(BoardLayout.mainPathPosition(piece.color, progress));
+        const destination = this.toView(BoardLayout.mainPathPosition(piece.color, progress, !!result.fromDetour && progress <= 0));
         const flight = segment.kind === 'FLIGHT';
         const duration = flight ? 0.9 : segment.kind === 'TAKEOFF' ? 0.55 : segment.kind === 'JUMP' ? 0.42 : 0.15;
         const height = flight ? 86 : segment.kind === 'WALK' ? 11 : 42;
@@ -164,11 +202,17 @@ export class BoardController extends Component {
     }
     await Promise.all(captureTasks);
   }
-  private async capture(id: string, epoch: number): Promise<void> {
+  private async capture(id: string, epoch: number, outcome?: CaptureOutcome): Promise<void> {
     const actor = this.actors.get(id), piece = this.pieces.get(id);
     if (!actor || !piece) return;
-    const from = this.piecePoint(piece), destination = this.toView(BoardLayout.airportPosition(piece.color, this.airportIndex(piece)));
+    const from = this.piecePoint(outcome?.before ?? piece);
+    const destination = outcome ? this.piecePoint(outcome.after) : this.toView(BoardLayout.airportPosition(piece.color, this.airportIndex(piece)));
     void this.impact(from, new Color(BOARD_COLORS[piece.color]), 0.5);
+    if (outcome?.outcome === 'LOCKED') {
+      actor.hit.getChildByName('LockBadge')!.active = true;
+      await this.timeline.animate(.5, (t) => { if (epoch === this.epoch) this.scene3D.place(actor, from, 7 * Math.sin(t * Math.PI), 1 - .12 * Math.sin(t * Math.PI)); });
+      return;
+    }
     await this.timeline.animate(0.8, (t) => {
       if (epoch !== this.epoch) return;
       const point = Vec3.lerp(new Vec3(), from, destination, easeOut(t));
@@ -195,11 +239,17 @@ export class BoardController extends Component {
     actor.hit.on(Node.EventType.TOUCH_END, () => this.node.emit('piece-selected', piece.id));
     const badge = new Node('Badge'); badge.layer = Layers.Enum.UI_2D; badge.setParent(actor.hit); badge.setPosition(14, 18); badge.addComponent(UITransform).setContentSize(24, 24);
     const label = badge.addComponent(Label); label.fontSize = 18; label.isBold = true; label.horizontalAlign = Label.HorizontalAlign.CENTER;
+    const lock = new Node('LockBadge'); lock.layer = Layers.Enum.UI_2D; lock.setParent(actor.hit); lock.setPosition(19, 20); lock.addComponent(UITransform).setContentSize(22, 26);
+    const g = lock.addComponent(Graphics); g.fillColor = new Color('#142234'); g.roundRect(-11, -12, 22, 26, 4); g.fill();
+    g.strokeColor = new Color('#ffe08a'); g.lineWidth = 2.5; g.roundRect(-5, 0, 10, 9, 4); g.stroke();
+    g.fillColor = new Color('#ffe08a'); g.roundRect(-8, -9, 16, 13, 2); g.fill();
+    g.fillColor = new Color('#142234'); g.circle(0, -3, 2); g.fill(); lock.active = false;
     this.actors.set(piece.id, actor);
     return actor;
   }
   private airportIndex(piece: Piece): number { return Number(piece.id.split('-').pop()) - 1; }
-  private piecePoint(piece: Piece): Vec3 { return this.toView(BoardLayout.piecePosition(piece.color, piece.progress, piece.state, this.airportIndex(piece))); }
+  private piecePoint(piece: Piece): Vec3 { return this.toView(BoardLayout.piecePosition(piece.color, piece.progress, piece.state, this.airportIndex(piece), piece.detour)); }
+  private cellPoint(cell: string): Vec3 { return this.toView(BoardLayout.calibrationPosition(trackKey(Number(cell.slice(1))))); }
   private toView(point: Readonly<Vec3>): Vec3 { const p = rotateBoard(point, this.turns); return new Vec3(p.x, p.y); }
   private fromView(point: Readonly<Vec3>): Vec3 { const p = rotateBoard(point, -this.turns); return new Vec3(p.x, p.y); }
   private resize(): void {

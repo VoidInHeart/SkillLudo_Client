@@ -14,16 +14,16 @@ export class BoardLayout {
     return point ? new Vec3(point.x, point.y, 0) : null;
   }
   public static calibrationPosition(key: string): Vec3 { return this.namedPosition(key) ?? Vec3.ZERO.clone(); }
-  public static mainPathPosition(color: PlayerColor, progress: number): Vec3 {
-    const cell = getBoardCell(color, progress);
+  public static mainPathPosition(color: PlayerColor, progress: number, detour = false): Vec3 {
+    const cell = getBoardCell(color, progress, detour);
     if (!cell || cell.startsWith('T-')) return this.takeoffPosition(color);
     if (cell.startsWith('F-')) return this.finalPathPosition(color, progress - FINAL_PATH_START);
     return this.calibrationPosition(trackKey(Number(cell.slice(1))));
   }
-  public static piecePosition(color: PlayerColor, progress: number, state: string, airportIndex = 0): Vec3 {
+  public static piecePosition(color: PlayerColor, progress: number, state: string, airportIndex = 0, detour = false): Vec3 {
     if (state === 'AIRPORT' || state === 'FINISHED') return this.airportPosition(color, airportIndex);
     // Stacks grow vertically in 3D; footprints always stay at the cell centre.
-    return this.mainPathPosition(color, progress);
+    return this.mainPathPosition(color, progress, detour);
   }
   public static airportPosition(color: PlayerColor, index: number): Vec3 { return this.calibrationPosition(`${color.toLowerCase()}-airport-${Math.max(0, Math.min(3, index)) + 1}`); }
   public static takeoffPosition(color: PlayerColor): Vec3 { return this.calibrationPosition(`${color.toLowerCase()}-takeoff`); }
