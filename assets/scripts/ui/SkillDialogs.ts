@@ -46,7 +46,7 @@ export class SkillDialogs {
     if (this.mode === 'book') this.renderBook();
   }
   public update(): void {
-    if (this.countdown && this.snapshot?.reaction) this.countdown.string = `还有 ${Math.max(0, Math.ceil((this.snapshot.reaction.expiresAt - Date.now()) / 1000))} 秒 · 超时不锁定`;
+    if (this.countdown && this.snapshot?.reaction) this.countdown.string = `还有 ${Math.max(0, Math.ceil((this.snapshot.reaction.expiresAt - Date.now()) / 1000))} 秒 · 超时放弃`;
   }
   public openBook(inMatch = false): void {
     if (this.mode === 'reaction') return;
@@ -90,6 +90,7 @@ export class SkillDialogs {
     if (runtime && definition.kind === 'LIMITED') status = runtime.charges > 0 ? `剩余 1 次 · ${status}` : '本局已使用';
     if (runtime && definition.kind === 'COOLDOWN' && runtime.cooldownTurns > 0) status = `冷却中 · 还需 ${runtime.cooldownTurns} 个己方正常回合`;
     if (runtime && definition.kind === 'AWAKENING') status = runtime.awakened ? '已觉醒 · 永久生效' : `觉醒进度：${runtime.progress ?? 0}${definition.id === 'cn-roar' ? ' / 100（超过后觉醒）' : ' / 2 架'}`;
+    if (runtime && definition.id === 'uk-apple' && !runtime.awakened) status += runtime.charges === 0 ? ' · 绑定已使用' : ' · 绑定剩余 1 次';
     if (runtime && definition.id === 'cn-scale' && runtime.forcedDelta) status += ` · 本次强制 ${runtime.forcedDelta > 0 ? '+' : ''}${runtime.forcedDelta}`;
     if (runtime && definition.id === 'cn-scale' && runtime.storedCharge) status += ' · 已储备 1 次';
     if (runtime && definition.id === 'cn-scale' && runtime.usedThisTurn) status = '本轮已使用（含储备），下轮再操作';
@@ -121,15 +122,16 @@ export class SkillDialogs {
   private renderReaction(): void {
     const reaction = this.snapshot?.reaction;
     if (!reaction) return;
-    const { card, width, height } = this.frame('传统艺能 · 是否锁定飞机？', 460);
-    this.label(card, 'ReactionHint', `最多选择 ${reaction.capacity} 架。锁定仍计为被击落。\n原格清空后，选原始骰点 3 或 4 可解锁移动。`, 0, height / 2 - 105, width - 40, 64, 18);
+    const binding = reaction.kind === 'UK_BIND';
+    const { card, width, height } = this.frame(binding ? '牛顿的苹果 · 是否绑定敌机？' : '传统艺能 · 是否锁定飞机？', 460);
+    this.label(card, 'ReactionHint', binding ? '选择一架飞机与敌机绑定同行，本局仅一次。\n主动移动或越过返家检查点时脱离。' : `最多选择 ${reaction.capacity} 架。锁定仍计为被击落。\n原格清空后，选原始骰点 3 或 4 可解锁移动。`, 0, height / 2 - 105, width - 40, 64, 18);
     this.countdown = this.label(card, 'ReactionCountdown', '', 0, height / 2 - 164, width - 32, 28, 17, new Color('#f8d776'));
-    reaction.pieceIds.forEach((id, index) => this.button(card, `Lock-${id}`, `${this.locks.has(id) ? '☑' : '□'}  法国 ${id.split('-').pop()} 号飞机`,
+    reaction.pieceIds.forEach((id, index) => this.button(card, `Lock-${id}`, `${this.locks.has(id) ? '☑' : '□'}  ${binding ? '英国' : '法国'} ${id.split('-').pop()} 号飞机`,
       (index % 2 === 0 ? -1 : 1) * width * .23, height / 2 - 219 - Math.floor(index / 2) * 51, width * .43,
       () => { if (this.locks.has(id)) this.locks.delete(id); else if (this.locks.size < reaction.capacity) this.locks.add(id); this.renderReaction(); }, !this.busy, this.locks.has(id)));
-    const respond = (ids: string[]): void => { this.emit({ type: 'cast', skillId: 'fr-lock', reactionId: reaction.id, targetPieceIds: ids }); };
-    this.button(card, 'DeclineLock', '不锁定', -width * .23, -height / 2 + 52, width * .4, () => respond([]), !this.busy);
-    this.button(card, 'ConfirmLocks', `锁定所选（${this.locks.size}）`, width * .23, -height / 2 + 52, width * .4, () => respond(Array.from(this.locks)), !this.busy && this.locks.size > 0);
+    const respond = (ids: string[]): void => { this.emit({ type: 'cast', skillId: binding ? 'uk-bind' : 'fr-lock', reactionId: reaction.id, targetPieceIds: ids }); };
+    this.button(card, 'DeclineLock', binding ? '放弃绑定' : '不锁定', -width * .23, -height / 2 + 52, width * .4, () => respond([]), !this.busy);
+    this.button(card, 'ConfirmLocks', `${binding ? '绑定' : '锁定'}所选（${this.locks.size}）`, width * .23, -height / 2 + 52, width * .4, () => respond(Array.from(this.locks)), !this.busy && this.locks.size > 0);
     this.update();
   }
   private remove(): void {

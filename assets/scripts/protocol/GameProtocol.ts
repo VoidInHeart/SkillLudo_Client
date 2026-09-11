@@ -112,6 +112,10 @@ export interface Piece {
   locked?: boolean;
   /** Swapped planes traverse the omitted ring cells at progress -1/0. */
   detour?: boolean;
+  /** Britain travels with this hostile carrier until it moves itself or reaches its home turn. */
+  boundTo?: string;
+  /** After taking off, the next walking move is forced to one pip. */
+  cursed?: boolean;
 }
 
 export interface GameState {
@@ -199,9 +203,10 @@ export interface FactionRuntime {
   normalTurns: number; rolledThisTurn: boolean; awakened: boolean; limitedUsed: boolean;
   energy: number; level: number; readyAtTurn: number; forcedDelta: number; pendingDelta: number;
   storedCharge?: boolean; lastScaleTurn?: number; scaleUsedTurn?: number;
+  appleUsed?: boolean;
 }
 export interface CaptureOutcome { pieceId: string; outcome: 'AIRPORT' | 'TAKEOFF' | 'LOCKED'; before: Piece; after: Piece; }
-export interface CaptureReaction { id: number; playerId: string; pieceIds: string[]; capacity: number; expiresAt: number; }
+export interface CaptureReaction { id: number; playerId: string; pieceIds: string[]; capacity: number; expiresAt: number; kind?: 'FR_LOCK' | 'UK_BIND'; carrierId?: string; }
 export interface SkillEffect {
   skillId: string; playerId: string; message: string;
   movedPieces?: Array<{ before: Piece; after: Piece }>;
@@ -211,6 +216,7 @@ export interface SkillEffect {
 export interface PendingResolution extends CaptureReaction {
   actorPlayerId: string; victimIds: string[]; move?: MoveResult; effect?: SkillEffect;
   previousPhase: GamePhase;
+  decisions?: { lockedIds: string[]; boundIds: string[]; answered: string[] };
 }
 export interface SkillResolution { move?: MoveResult; effect?: SkillEffect; pending?: boolean; }
 
@@ -244,6 +250,8 @@ export interface MoveResult {
   pendingReaction?: boolean;
   fromDetour?: boolean;
   toDetour?: boolean;
+  effectiveDice?: number;
+  carriedPieces?: Array<{ before: Piece; after: Piece }>;
 }
 
 export interface MoveSegment {
