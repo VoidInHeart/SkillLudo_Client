@@ -6,6 +6,8 @@
 
 `preview-result.json` 与常规截图已更新为本次真实联机回归；微信最新为 30 文件、3,575,162 字节、landscape。浏览器设备模拟不是微信真机测试。此前 v4 发布清单与暂停验收继续作为对应版本历史证据，当前修复的公网发布信息见阶段日志。
 
+修复已上线，生产客户端 `e29b717`、后端 `774cf18`，清单 `release-viewport-v1.json`。`published-viewport-result.json` 的 7 组公网适配测试全部通过，`published-viewport-*.png` 为对应截图；`published-result.json` 则是新版真实公网双人对局。两类结果均无浏览器错误。
+
 ## 当前：2026-09-11 协议 v4
 
 客户端 22、服务端 80 项回归通过。`preview-result.json`、`skill-result.json`、`lifecycle-result.json` 三组浏览器检查通过且错误为空；后两组是拦截命令的 Cocos 交互测试，网络正确性由服务端真实 WebSocket 用例覆盖。

@@ -1,1 +1,19 @@
-{"status":"passed","checkedAt":"2026-09-11T11:57:48.945Z","url":"http://81.70.145.148","sockets":["ws://81.70.145.148","ws://81.70.145.148"],"errors":[],"checks":["real public page assets","unmodified automatic socket URL","real guest authentication","two-player room and colour preferences","start game","3D dual dice and selection"]}
+{
+  "status": "passed",
+  "checkedAt": "2026-09-11T17:05:18.172Z",
+  "url": "http://81.70.145.148",
+  "sockets": [
+    "ws://81.70.145.148",
+    "ws://81.70.145.148"
+  ],
+  "errors": [],
+  "checks": [
+    "real public page assets",
+    "unmodified automatic socket URL",
+    "protocol 4",
+    "real guest authentication",
+    "two-player room and colour preferences",
+    "start game",
+    "3D dual dice and atomic selection"
+  ]
+}
