@@ -6,6 +6,7 @@ import { MatchHud } from './MatchHud';
 import { SkillDialogs, type SkillInput } from './SkillDialogs';
 import { FACTION_NAMES } from '../game/SkillCatalog';
 import { MatchOverlays } from './MatchOverlays';
+import { SettingsPanel } from './SettingsPanel';
 
 const { ccclass, property } = _decorator;
 type Screen = 'HOME' | 'AUTH' | 'ROOM' | 'GAME';
@@ -31,6 +32,7 @@ export class GameUI extends Component {
   private matchHud: MatchHud | null = null;
   private skills: SkillDialogs | null = null;
   private overlays: MatchOverlays | null = null;
+  private settings: SettingsPanel | null = null;
   private serverNow = () => Date.now();
   private presentationBusy = false;
   private requestPending = false;
@@ -81,6 +83,7 @@ export class GameUI extends Component {
     this.installWebInputStyle();
     if (!this.statusLabel || !this.roomLabel || !this.rollButton || !this.readyButton || !this.startButton) this.buildRuntimeUi();
     this.showAuthPage();
+    this.settings = new SettingsPanel(this.getRuntimeRoot(), (enabled) => this.overlays?.setChatToastsEnabled(enabled));
     view.on('canvas-resize', this.scheduleResize, this);
     view.on('design-resolution-changed', this.scheduleResize, this);
     this.scheduleResize();
@@ -99,7 +102,7 @@ export class GameUI extends Component {
     this.matchHud?.showCalibration(target ? `校准 ${target.index}/${target.total}：${target.key}` : '');
   }
   public onDestroy(): void {
-    this.matchHud?.destroy(); this.skills?.destroy(); this.overlays?.destroy();
+    this.matchHud?.destroy(); this.skills?.destroy(); this.overlays?.destroy(); this.settings?.destroy();
     view.off('canvas-resize', this.scheduleResize, this); view.off('design-resolution-changed', this.scheduleResize, this);
   }
   private scheduleResize(): void {
@@ -137,13 +140,14 @@ export class GameUI extends Component {
     if (this.currentScreen === 'ROOM' && this.lastSnapshot) this.renderRoom(this.lastSnapshot, this.localPlayerId);
     else this.setScreen(this.currentScreen);
   }
-  public update(): void { this.skills?.update(); this.overlays?.update(); this.matchHud?.update(); }
+  public update(): void { this.skills?.update(); this.overlays?.update(); this.matchHud?.update(); this.settings?.update(); }
   public setServerClock(now: () => number): void { this.serverNow = now; this.skills?.setClock(now); this.overlays?.setClock(now); }
   public flashSkills(): void { this.matchHud?.flashSkills(); }
   private matchOverlays(): MatchOverlays {
     if (!this.overlays) {
       this.overlays = new MatchOverlays(this.getRuntimeRoot(), (input) => this.node.emit('lifecycle-input', input));
       this.overlays.setClock(() => this.serverNow());
+      this.overlays.setChatToastsEnabled(this.settings?.chatToastsEnabled ?? true);
       this.overlays.setVisible(['ROOM', 'GAME'].includes(this.currentScreen));
     }
     return this.overlays;
@@ -419,7 +423,8 @@ export class GameUI extends Component {
     this.homeConnectionLabel = this.addLabel(root, 'HomeConnection', '连接游戏服务器中…', new Vec3(0, layout.connectionY, 0), 500, 28, layout.portrait ? 18 : 15, new Color(66, 131, 101));
     this.addLabel(root, 'RoomHint', '创建房间，邀请朋友一起起飞', new Vec3(0, layout.hintY, 0), 500, 28, layout.portrait ? 17 : 15, new Color(106, 126, 155));
     this.createHomeAvatar(root, size);
-    this.createModalButton(root, '技能图鉴', new Vec3(size.width / 2 - 90, size.height / 2 - 42), new Color('#287bc0'), () => this.showSkills(), 136, 40, 18);
+    const bookHeight = layout.portrait ? 52 : 44;
+    this.createModalButton(root, '技能图鉴', new Vec3(0, layout.actionY - layout.buttonHeight / 2 - 18 - bookHeight / 2), new Color('#287bc0'), () => this.showSkills(), layout.portrait ? 280 : 200, bookHeight, layout.portrait ? 22 : 18);
     const activeGames = new Node('ActiveGames'); activeGames.setParent(root); activeGames.layer = Layers.Enum.UI_2D; activeGames.addComponent(UITransform).setContentSize(330, 126);
     activeGames.setPosition(size.width / 2 - 190, size.height / 2 - 145, 0); this.activeGamesRoot = activeGames; this.renderActiveGames();
     root.setSiblingIndex(0); this.homeRoot = root;

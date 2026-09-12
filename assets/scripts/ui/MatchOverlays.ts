@@ -16,6 +16,7 @@ export class MatchOverlays {
   private playerId = '';
   private roomId = '';
   private activeScreen = false;
+  private chatToastsEnabled = true;
   private modalKey = '';
   private dismissedWinner = '';
   private clock: Label | null = null;
@@ -34,6 +35,11 @@ export class MatchOverlays {
   public destroy(): void { view.off('canvas-resize', this.resize, this); view.off('design-resolution-changed', this.resize, this); this.root.destroy(); }
   public setClock(now: () => number): void { this.now = now; }
   public setVisible(visible: boolean): void { this.activeScreen = visible; this.root.active = visible; }
+  public setChatToastsEnabled(enabled: boolean): void {
+    this.chatToastsEnabled = enabled;
+    if (!enabled) this.entries = [];
+    this.renderToasts();
+  }
   public render(snapshot: GameSnapshot, playerId: string): void {
     if (this.roomId && this.roomId !== snapshot.roomId) { this.entries = []; this.renderToasts(); }
     this.roomId = snapshot.roomId; this.snapshot = snapshot; this.playerId = playerId;
@@ -41,6 +47,7 @@ export class MatchOverlays {
     this.renderModal(); this.resize();
   }
   public appendChat(entry: ChatEntry): void {
+    if (!this.chatToastsEnabled) return;
     this.entries.push({ entry, expiresAt: Date.now() + 30_000 });
     this.entries = this.entries.slice(-80); this.renderToasts();
   }
@@ -64,12 +71,17 @@ export class MatchOverlays {
   }
   private renderToasts(): void {
     this.clear(this.toasts);
-    const size = view.getVisibleSize(), width = Math.min(345, size.width * .48);
-    this.entries.slice(-4).forEach(({ entry }, i, shown) => {
-      const card = this.card('ChatToast', this.toasts, width, 58, '#11283d');
-      card.setPosition(-size.width / 2 + width / 2 + 14, -size.height * .12 - (shown.length - 1 - i) * 64);
+    if (!this.chatToastsEnabled) return;
+    const inGame = !!this.snapshot && this.snapshot.roomStatus !== 'WAITING';
+    const size = view.getVisibleSize(), width = Math.min(inGame ? 270 : 345, size.width * (inGame ? .42 : .48));
+    const height = inGame ? 46 : 58, gap = 6;
+    this.entries.slice(inGame ? -3 : -4).forEach(({ entry }, i, shown) => {
+      const card = this.card('ChatToast', this.toasts, width, height, inGame ? '#e8f2fc' : '#11283d', inGame ? 155 : 255);
+      card.setPosition(-size.width / 2 + width / 2 + 14, -size.height * .12 - (shown.length - 1 - i) * (height + gap));
       const sender = entry.kind === 'SYSTEM' ? '系统' : `${entry.kind === 'PRIVATE' ? '私信 · ' : ''}${entry.senderNickname ?? '玩家'}`;
-      const label = this.label(card, 'ToastMessage', `${sender}：${entry.content}`, 0, 0, width - 22, 50, 15, entry.kind === 'SYSTEM' ? '#ffd787' : '#edf4fa');
+      const label = this.label(card, 'ToastMessage', `${sender}：${entry.content}`, 0, 0, width - 22, height - 8, inGame ? 14 : 15,
+        inGame ? entry.kind === 'SYSTEM' ? '#725027' : '#263f59' : entry.kind === 'SYSTEM' ? '#ffd787' : '#edf4fa');
+      if (inGame) { label.overflow = Label.Overflow.CLAMP; label.lineHeight = 19; }
       label.horizontalAlign = Label.HorizontalAlign.LEFT;
     });
   }
@@ -148,10 +160,13 @@ export class MatchOverlays {
   private node(name: string, parent: Node, width: number, height: number): Node {
     const node = new Node(name); node.setParent(parent); node.layer = Layers.Enum.UI_2D; node.addComponent(UITransform).setContentSize(width, height); return node;
   }
-  private card(name: string, parent: Node, width: number, height: number, color: string): Node {
+  private card(name: string, parent: Node, width: number, height: number, color: string, opacity = 255): Node {
     const node = this.node(name, parent, width, height), g = node.addComponent(Graphics);
-    g.fillColor = new Color(color); g.roundRect(-width / 2, -height / 2, width, height, 14); g.fill();
-    g.lineWidth = 1; g.strokeColor = new Color('#49677f'); g.roundRect(-width / 2, -height / 2, width, height, 14); g.stroke(); return node;
+    const fill = new Color(color); fill.a = opacity;
+    const stroke = new Color('#49677f'); stroke.a = opacity;
+    g.fillColor = fill; g.roundRect(-width / 2, -height / 2, width, height, 14); g.fill();
+    g.lineWidth = 1; g.strokeColor = stroke;
+    g.roundRect(-width / 2, -height / 2, width, height, 14); g.stroke(); return node;
   }
   private label(parent: Node, name: string, text: string, x: number, y: number, width: number, height: number, font: number, color = '#edf4fa'): Label {
     const scale = this.scaleFor(parent); y *= scale; height *= scale; font *= scale;
