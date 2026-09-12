@@ -6,6 +6,8 @@
 
 本轮 `viewport-result.json` 与对应截图已更新，7 种适配环境通过。微信最新包体 3,580,803 字节、landscape，仍未真机验收；详情见 `../设置与消息浮窗.md`。下文发布清单属于各自阶段。
 
+当前已上线客户端 `e9856fc`、后端 `774cf18`，清单 `release-settings-v2.json`。公网设置验收 `published-settings-result.json` 与两种设备截图均通过，`published-result.json` 已更新为本次真实双人对局验证，均无浏览器错误。
+
 ## 2026-09-12 高分屏与旋转修复
 
 新增 `viewport-result.json` 与 `viewport-*.png`：桌面 DPR 1/2/1.25、模拟微信 Android 横/竖屏 DPR 3、小屏手机和平板共 7 种环境，验证初始画布边界、旋转后布局、输入框实例和文本保留，以及实际按钮/实体骰子/飞机点击。修复前桌面 DPR 2 的 1280×800 窗口被 2560×1600 CSS 画布裁切。详见 `../屏幕适配与微信横屏.md`。

@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-09-12T03:38:41.678Z",
+  "url": "http://81.70.145.148",
+  "checks": [
+    "desktop: encyclopedia/profile placement; gear in auth/home/room/game/chat/skills/pause/winner; compact translucent toasts; click/drag toggle; history retained; no replay; expiration; rotation and reload persistence",
+    "phone: encyclopedia/profile placement; gear in auth/home/room/game/chat/skills/pause/winner; compact translucent toasts; click/drag toggle; history retained; no replay; expiration; rotation and reload persistence"
+  ],
+  "errors": [],
+  "validation": "Cocos pointer interactions with isolated game snapshots, desktop DPR 2 and mobile emulation DPR 3; no physical WeChat device test."
+}
