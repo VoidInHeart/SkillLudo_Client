@@ -69,6 +69,7 @@ export class GameController extends Component {
     this.gameUI?.node.on('join-room', this.onClickJoinRoom, this);
     this.gameUI?.node.on('account-action', this.handleAccountAction, this);
     this.gameUI?.node.on('chat-send', this.handleChatSend, this);
+    this.gameUI?.node.on('submission-send', this.handleSubmission, this);
     this.gameUI?.node.on('debug-roll', this.handleDebugRoll, this);
     this.boardController?.node.on('calibration-save', this.handleCalibrationSave, this);
     this.gameUI?.node.on('rejoin-game', this.handleRejoinGame, this);
@@ -97,6 +98,7 @@ export class GameController extends Component {
     this.gameUI?.node.off('join-room', this.onClickJoinRoom, this);
     this.gameUI?.node.off('account-action', this.handleAccountAction, this);
     this.gameUI?.node.off('chat-send', this.handleChatSend, this);
+    this.gameUI?.node.off('submission-send', this.handleSubmission, this);
     this.gameUI?.node.off('debug-roll', this.handleDebugRoll, this);
     this.boardController?.node.off('calibration-save', this.handleCalibrationSave, this);
     this.gameUI?.node.off('rejoin-game', this.handleRejoinGame, this);
@@ -281,6 +283,17 @@ export class GameController extends Component {
       this.gameUI?.setActiveGames(data.games ?? []);
     });
     this.network.on('ERROR', (message) => this.showError(message));
+    this.network.on('SUBMISSION_RESULT', (message) => {
+      if (message.requestId === this.submissionRequest) {
+        this.gameUI?.showSubmissionResult(message.data as { id?: string; status?: string; message: string });
+      }
+    });
+  }
+
+  private submissionRequest = '';
+  private handleSubmission(data: Record<string, unknown>): void {
+    try { this.submissionRequest = this.network.send('SUBMIT_CREATION', data); }
+    catch { this.gameUI?.showSubmissionResult({ status: 'ERROR', message: '网络未连接，草稿已保留，请重连后重试' }); }
   }
 
   private handleAccountAction(type: 'LOGIN' | 'REGISTER', data: AccountActionData): void {

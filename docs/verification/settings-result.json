@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "checkedAt": "2026-09-11T17:47:09.195Z",
+  "checkedAt": "2026-09-13T09:19:11.084Z",
   "url": "http://127.0.0.1:7459",
   "checks": [
     "desktop: encyclopedia/profile placement; gear in auth/home/room/game/chat/skills/pause/winner; compact translucent toasts; click/drag toggle; history retained; no replay; expiration; rotation and reload persistence",

@@ -7,6 +7,7 @@ import { SkillDialogs, type SkillInput } from './SkillDialogs';
 import { FACTION_NAMES } from '../game/SkillCatalog';
 import { MatchOverlays } from './MatchOverlays';
 import { SettingsPanel } from './SettingsPanel';
+import { SubmissionDialog } from './SubmissionDialog';
 
 const { ccclass, property } = _decorator;
 type Screen = 'HOME' | 'AUTH' | 'ROOM' | 'GAME';
@@ -33,6 +34,7 @@ export class GameUI extends Component {
   private skills: SkillDialogs | null = null;
   private overlays: MatchOverlays | null = null;
   private settings: SettingsPanel | null = null;
+  private submissions: SubmissionDialog | null = null;
   private serverNow = () => Date.now();
   private presentationBusy = false;
   private requestPending = false;
@@ -83,13 +85,20 @@ export class GameUI extends Component {
     this.installWebInputStyle();
     if (!this.statusLabel || !this.roomLabel || !this.rollButton || !this.readyButton || !this.startButton) this.buildRuntimeUi();
     this.showAuthPage();
-    this.settings = new SettingsPanel(this.getRuntimeRoot(), (enabled) => this.overlays?.setChatToastsEnabled(enabled));
+    this.settings = new SettingsPanel(this.getRuntimeRoot(), (enabled) => this.overlays?.setChatToastsEnabled(enabled), () => this.showSubmission('FEEDBACK'));
     view.on('canvas-resize', this.scheduleResize, this);
     view.on('design-resolution-changed', this.scheduleResize, this);
     this.scheduleResize();
   }
 
   public showHome(): void { this.setScreen('HOME'); }
+  public showSubmission(kind: 'COUNTRY' | 'FEEDBACK'): void {
+    if (!this.accountProfile?.playerId.startsWith('u_')) { this.showError('请先登录注册账号，再提交设计或反馈'); return; }
+    this.closeAccountDrawer();
+    this.submissions ??= new SubmissionDialog(this.getRuntimeRoot(), (data) => this.node.emit('submission-send', data));
+    this.submissions.open(kind, this.accountProfile.playerId);
+  }
+  public showSubmissionResult(data: { id?: string; status?: string; message: string }): void { this.submissions?.result(data); }
   public setActiveGames(games: ActiveGameSummary[]): void {
     this.activeGames = [...games];
     this.renderActiveGames();
@@ -103,6 +112,7 @@ export class GameUI extends Component {
   }
   public onDestroy(): void {
     this.matchHud?.destroy(); this.skills?.destroy(); this.overlays?.destroy(); this.settings?.destroy();
+    this.submissions?.destroy();
     view.off('canvas-resize', this.scheduleResize, this); view.off('design-resolution-changed', this.scheduleResize, this);
   }
   private scheduleResize(): void {
@@ -596,6 +606,7 @@ export class GameUI extends Component {
     graphics.fillColor = new Color(35, 113, 205); graphics.circle(0, 0, diameter / 2 - 7); graphics.fill();
     this.homeAvatarInitial = this.addLabel(node, 'AccountAvatarInitial', '我', Vec3.ZERO, diameter - 10, diameter - 10, portrait ? 28 : 23, Color.WHITE);
     node.on(Node.EventType.TOUCH_END, () => this.showAccountDrawer());
+    this.createModalButton(parent, 'DIY新的国家卡片', new Vec3(size.width / 2 - 130, node.position.y - diameter / 2 - 31), new Color('#287bc0'), () => this.showSubmission('COUNTRY'), 220, 42, 19);
     this.updateHomeAvatar();
   }
 

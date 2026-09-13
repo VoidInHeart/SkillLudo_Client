@@ -12,7 +12,7 @@ export class SettingsPanel {
   private stateLabel: Label | null = null;
   private scale = 1;
 
-  public constructor(parent: Node, private readonly changed: (enabled: boolean) => void) {
+  public constructor(parent: Node, private readonly changed: (enabled: boolean) => void, private readonly feedback: () => void = () => {}) {
     try { this.chatToastsEnabled = sys.localStorage.getItem(CHAT_TOASTS_KEY) !== 'false'; } catch { /* Use the default when storage is unavailable. */ }
     this.root = this.node('GlobalSettings', parent, 0, 0);
     this.gear = this.node('SettingsGear', this.root, 60, 60);
@@ -60,7 +60,10 @@ export class SettingsPanel {
     close.addComponent(Button); close.on(Node.EventType.TOUCH_END, () => this.close());
     this.label(card, 'ChatToastsTitle', '聊天消息浮窗', -83, 18, 240, 38, 22, '#29496c');
     this.label(card, 'ChatToastsHint', '显示新收到的聊天与系统消息', -83, -18, 254, 34, 15, '#647d96');
-    this.label(card, 'SettingsHint', '关闭后，仍可在聊天窗口查看完整消息', 0, -98, 440, 38, 17, '#647d96');
+    this.label(card, 'SettingsHint', '关闭后仍可在聊天窗口查看完整消息', -48, -98, 340, 38, 16, '#647d96');
+    const feedback = this.node('FeedbackButton', card, 85 * s, 40 * s); feedback.setPosition(178 * s, -98 * s);
+    this.label(feedback, 'FeedbackText', '反馈', 0, 0, 80, 36, 20, '#287bc0');
+    feedback.addComponent(Button); feedback.on(Button.EventType.CLICK, () => { this.close(); this.feedback(); });
     this.toggle = this.node('ChatToastsToggle', card, 110 * s, 60 * s); this.toggle.setPosition(155 * s, 14 * s);
     this.toggle.addComponent(Button); this.toggle.addComponent(Graphics);
     this.stateLabel = this.label(card, 'ChatToastsState', '', 155, -37, 100, 30, 17, '#486b8d');
