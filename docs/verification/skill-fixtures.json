@@ -4,7 +4,7 @@
     "playerId": "RED",
     "snapshot": {
       "protocolVersion": 4,
-      "roomId": "779794",
+      "roomId": "522757",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -1095,7 +1095,7 @@
     },
     "after": {
       "protocolVersion": 4,
-      "roomId": "779794",
+      "roomId": "522757",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -2179,7 +2179,7 @@
     "playerId": "BLUE",
     "snapshot": {
       "protocolVersion": 4,
-      "roomId": "733010",
+      "roomId": "235594",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -3388,7 +3388,7 @@
     },
     "after": {
       "protocolVersion": 4,
-      "roomId": "733010",
+      "roomId": "235594",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -3702,7 +3702,7 @@
     "playerId": "YELLOW",
     "snapshot": {
       "protocolVersion": 4,
-      "roomId": "744090",
+      "roomId": "870188",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -4013,7 +4013,7 @@
           "yellow-2"
         ],
         "capacity": 2,
-        "expiresAt": 1789126800963,
+        "expiresAt": 1789289884188,
         "kind": "FR_LOCK"
       },
       "rescuePieceIds": [],
@@ -4111,7 +4111,7 @@
     },
     "after": {
       "protocolVersion": 4,
-      "roomId": "744090",
+      "roomId": "870188",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -4428,7 +4428,7 @@
     "playerId": "GREEN",
     "snapshot": {
       "protocolVersion": 4,
-      "roomId": "925736",
+      "roomId": "269254",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -4790,7 +4790,7 @@
     },
     "after": {
       "protocolVersion": 4,
-      "roomId": "925736",
+      "roomId": "269254",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -5102,7 +5102,7 @@
     "playerId": "YELLOW",
     "snapshot": {
       "protocolVersion": 4,
-      "roomId": "954385",
+      "roomId": "257455",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -5451,7 +5451,7 @@
     },
     "after": {
       "protocolVersion": 4,
-      "roomId": "954385",
+      "roomId": "257455",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -5764,7 +5764,7 @@
     "playerId": "RED",
     "snapshot": {
       "protocolVersion": 4,
-      "roomId": "225364",
+      "roomId": "310890",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -6075,7 +6075,7 @@
           "red-1"
         ],
         "capacity": 1,
-        "expiresAt": 1789126800964,
+        "expiresAt": 1789289884189,
         "kind": "UK_BIND",
         "carrierId": "green-1"
       },
@@ -6155,7 +6155,7 @@
     },
     "after": {
       "protocolVersion": 4,
-      "roomId": "225364",
+      "roomId": "310890",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -6471,7 +6471,7 @@
     "playerId": "GREEN",
     "snapshot": {
       "protocolVersion": 4,
-      "roomId": "658408",
+      "roomId": "377823",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -7041,7 +7041,7 @@
     },
     "after": {
       "protocolVersion": 4,
-      "roomId": "658408",
+      "roomId": "377823",
       "roomStatus": "PLAYING",
       "roomMode": "PRIVATE",
       "ownerId": "RED",
@@ -7346,6 +7346,2958 @@
         }
       ],
       "actionOptions": [],
+      "rescuePieceIds": [],
+      "rolledTotal": 8,
+      "extraRolls": 0
+    }
+  },
+  {
+    "name": "locked-stack-RED",
+    "playerId": "RED",
+    "snapshot": {
+      "protocolVersion": 4,
+      "roomId": "312888",
+      "roomStatus": "PLAYING",
+      "roomMode": "PRIVATE",
+      "ownerId": "RED",
+      "players": [
+        {
+          "id": "RED",
+          "nickname": "RED",
+          "color": "RED",
+          "preferredColor": "RED",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "YELLOW",
+          "nickname": "YELLOW",
+          "color": "YELLOW",
+          "preferredColor": "YELLOW",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "BLUE",
+          "nickname": "BLUE",
+          "color": "BLUE",
+          "preferredColor": "BLUE",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "GREEN",
+          "nickname": "GREEN",
+          "color": "GREEN",
+          "preferredColor": "GREEN",
+          "ready": true,
+          "connected": true
+        }
+      ],
+      "currentPlayerId": "RED",
+      "phase": "WAIT_SELECT_DIE",
+      "dice": null,
+      "diceChoices": [
+        2,
+        6
+      ],
+      "selectedDieIndex": null,
+      "rollId": 1,
+      "pieces": [
+        {
+          "id": "red-1",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "MAIN_PATH",
+          "progress": 5
+        },
+        {
+          "id": "red-2",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-3",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-4",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-1",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "MAIN_PATH",
+          "progress": 31,
+          "detour": false,
+          "locked": true
+        },
+        {
+          "id": "yellow-2",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-3",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-4",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-1",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-2",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-3",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-4",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-1",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-2",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-3",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-4",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        }
+      ],
+      "movablePieceIds": [],
+      "rankings": [],
+      "turnNumber": 1,
+      "movePreviews": {},
+      "skills": [
+        {
+          "playerId": "RED",
+          "skillId": "uk-sun",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "RED",
+          "skillId": "uk-apple",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 0
+        },
+        {
+          "playerId": "RED",
+          "skillId": "uk-industry",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "YELLOW",
+          "skillId": "fr-tradition",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 1
+        },
+        {
+          "playerId": "YELLOW",
+          "skillId": "fr-paris",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-roar",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 8
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-scale",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-grit",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "GREEN",
+          "skillId": "us-war",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "GREEN",
+          "skillId": "us-bomb",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        }
+      ],
+      "actionOptions": [
+        {
+          "id": "die-0",
+          "dieIndex": 0,
+          "dice": 2,
+          "kind": "STANDARD",
+          "label": "2",
+          "mandatory": false,
+          "usesStoredCharge": false,
+          "extraTurn": false,
+          "movablePieceIds": [
+            "red-1"
+          ],
+          "movePreviews": {
+            "red-1": {
+              "pieceId": "red-1",
+              "fromProgress": 5,
+              "toProgress": 7,
+              "path": [
+                6,
+                7
+              ],
+              "segments": [
+                {
+                  "kind": "WALK",
+                  "fromProgress": 5,
+                  "toProgress": 7,
+                  "path": [
+                    6,
+                    7
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": false,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": false,
+              "effectiveDice": 2
+            }
+          }
+        },
+        {
+          "id": "die-1",
+          "dieIndex": 1,
+          "dice": 6,
+          "kind": "STANDARD",
+          "label": "6",
+          "mandatory": false,
+          "usesStoredCharge": false,
+          "extraTurn": true,
+          "movablePieceIds": [
+            "red-1",
+            "red-2",
+            "red-3",
+            "red-4"
+          ],
+          "movePreviews": {
+            "red-1": {
+              "pieceId": "red-1",
+              "fromProgress": 5,
+              "toProgress": 11,
+              "path": [
+                6,
+                7,
+                8,
+                9,
+                10,
+                11
+              ],
+              "segments": [
+                {
+                  "kind": "WALK",
+                  "fromProgress": 5,
+                  "toProgress": 11,
+                  "path": [
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": false,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "red-2": {
+              "pieceId": "red-2",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "red-3": {
+              "pieceId": "red-3",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "red-4": {
+              "pieceId": "red-4",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            }
+          }
+        }
+      ],
+      "rescuePieceIds": [],
+      "rolledTotal": 8,
+      "extraRolls": 0
+    },
+    "after": {
+      "protocolVersion": 4,
+      "roomId": "312888",
+      "roomStatus": "PLAYING",
+      "roomMode": "PRIVATE",
+      "ownerId": "RED",
+      "players": [
+        {
+          "id": "RED",
+          "nickname": "RED",
+          "color": "RED",
+          "preferredColor": "RED",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "YELLOW",
+          "nickname": "YELLOW",
+          "color": "YELLOW",
+          "preferredColor": "YELLOW",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "BLUE",
+          "nickname": "BLUE",
+          "color": "BLUE",
+          "preferredColor": "BLUE",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "GREEN",
+          "nickname": "GREEN",
+          "color": "GREEN",
+          "preferredColor": "GREEN",
+          "ready": true,
+          "connected": true
+        }
+      ],
+      "currentPlayerId": "RED",
+      "phase": "WAIT_SELECT_DIE",
+      "dice": null,
+      "diceChoices": [
+        2,
+        6
+      ],
+      "selectedDieIndex": null,
+      "rollId": 1,
+      "pieces": [
+        {
+          "id": "red-1",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "MAIN_PATH",
+          "progress": 5
+        },
+        {
+          "id": "red-2",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-3",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-4",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-1",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "MAIN_PATH",
+          "progress": 31,
+          "detour": false,
+          "locked": true
+        },
+        {
+          "id": "yellow-2",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-3",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-4",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-1",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-2",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-3",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-4",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-1",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-2",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-3",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-4",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        }
+      ],
+      "movablePieceIds": [],
+      "rankings": [],
+      "turnNumber": 1,
+      "movePreviews": {},
+      "skills": [
+        {
+          "playerId": "RED",
+          "skillId": "uk-sun",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "RED",
+          "skillId": "uk-apple",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 0
+        },
+        {
+          "playerId": "RED",
+          "skillId": "uk-industry",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "YELLOW",
+          "skillId": "fr-tradition",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 1
+        },
+        {
+          "playerId": "YELLOW",
+          "skillId": "fr-paris",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-roar",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 8
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-scale",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-grit",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "GREEN",
+          "skillId": "us-war",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "GREEN",
+          "skillId": "us-bomb",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        }
+      ],
+      "actionOptions": [
+        {
+          "id": "die-0",
+          "dieIndex": 0,
+          "dice": 2,
+          "kind": "STANDARD",
+          "label": "2",
+          "mandatory": false,
+          "usesStoredCharge": false,
+          "extraTurn": false,
+          "movablePieceIds": [
+            "red-1"
+          ],
+          "movePreviews": {
+            "red-1": {
+              "pieceId": "red-1",
+              "fromProgress": 5,
+              "toProgress": 7,
+              "path": [
+                6,
+                7
+              ],
+              "segments": [
+                {
+                  "kind": "WALK",
+                  "fromProgress": 5,
+                  "toProgress": 7,
+                  "path": [
+                    6,
+                    7
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": false,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": false,
+              "effectiveDice": 2
+            }
+          }
+        },
+        {
+          "id": "die-1",
+          "dieIndex": 1,
+          "dice": 6,
+          "kind": "STANDARD",
+          "label": "6",
+          "mandatory": false,
+          "usesStoredCharge": false,
+          "extraTurn": true,
+          "movablePieceIds": [
+            "red-1",
+            "red-2",
+            "red-3",
+            "red-4"
+          ],
+          "movePreviews": {
+            "red-1": {
+              "pieceId": "red-1",
+              "fromProgress": 5,
+              "toProgress": 11,
+              "path": [
+                6,
+                7,
+                8,
+                9,
+                10,
+                11
+              ],
+              "segments": [
+                {
+                  "kind": "WALK",
+                  "fromProgress": 5,
+                  "toProgress": 11,
+                  "path": [
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": false,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "red-2": {
+              "pieceId": "red-2",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "red-3": {
+              "pieceId": "red-3",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "red-4": {
+              "pieceId": "red-4",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            }
+          }
+        }
+      ],
+      "rescuePieceIds": [],
+      "rolledTotal": 8,
+      "extraRolls": 0
+    }
+  },
+  {
+    "name": "locked-stack-BLUE",
+    "playerId": "BLUE",
+    "snapshot": {
+      "protocolVersion": 4,
+      "roomId": "740467",
+      "roomStatus": "PLAYING",
+      "roomMode": "PRIVATE",
+      "ownerId": "RED",
+      "players": [
+        {
+          "id": "RED",
+          "nickname": "RED",
+          "color": "RED",
+          "preferredColor": "RED",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "YELLOW",
+          "nickname": "YELLOW",
+          "color": "YELLOW",
+          "preferredColor": "YELLOW",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "BLUE",
+          "nickname": "BLUE",
+          "color": "BLUE",
+          "preferredColor": "BLUE",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "GREEN",
+          "nickname": "GREEN",
+          "color": "GREEN",
+          "preferredColor": "GREEN",
+          "ready": true,
+          "connected": true
+        }
+      ],
+      "currentPlayerId": "BLUE",
+      "phase": "WAIT_SELECT_DIE",
+      "dice": null,
+      "diceChoices": [
+        2,
+        6
+      ],
+      "selectedDieIndex": null,
+      "rollId": 1,
+      "pieces": [
+        {
+          "id": "red-1",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-2",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-3",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-4",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-1",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "MAIN_PATH",
+          "progress": 18,
+          "detour": false,
+          "locked": true
+        },
+        {
+          "id": "yellow-2",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-3",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-4",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-1",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "MAIN_PATH",
+          "progress": 5
+        },
+        {
+          "id": "blue-2",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-3",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-4",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-1",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-2",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-3",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-4",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        }
+      ],
+      "movablePieceIds": [],
+      "rankings": [],
+      "turnNumber": 1,
+      "movePreviews": {},
+      "skills": [
+        {
+          "playerId": "RED",
+          "skillId": "uk-sun",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "RED",
+          "skillId": "uk-apple",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 0
+        },
+        {
+          "playerId": "RED",
+          "skillId": "uk-industry",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "YELLOW",
+          "skillId": "fr-tradition",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 1
+        },
+        {
+          "playerId": "YELLOW",
+          "skillId": "fr-paris",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-roar",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 8
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-scale",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-grit",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "GREEN",
+          "skillId": "us-war",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "GREEN",
+          "skillId": "us-bomb",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        }
+      ],
+      "actionOptions": [
+        {
+          "id": "die-0",
+          "dieIndex": 0,
+          "dice": 2,
+          "kind": "STANDARD",
+          "label": "2",
+          "mandatory": false,
+          "usesStoredCharge": false,
+          "extraTurn": false,
+          "movablePieceIds": [
+            "blue-1"
+          ],
+          "movePreviews": {
+            "blue-1": {
+              "pieceId": "blue-1",
+              "fromProgress": 5,
+              "toProgress": 7,
+              "path": [
+                6,
+                7
+              ],
+              "segments": [
+                {
+                  "kind": "WALK",
+                  "fromProgress": 5,
+                  "toProgress": 7,
+                  "path": [
+                    6,
+                    7
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": false,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": false,
+              "effectiveDice": 2
+            }
+          }
+        },
+        {
+          "id": "die-1",
+          "dieIndex": 1,
+          "dice": 6,
+          "kind": "STANDARD",
+          "label": "6",
+          "mandatory": false,
+          "usesStoredCharge": false,
+          "extraTurn": true,
+          "movablePieceIds": [
+            "blue-1",
+            "blue-2",
+            "blue-3",
+            "blue-4"
+          ],
+          "movePreviews": {
+            "blue-1": {
+              "pieceId": "blue-1",
+              "fromProgress": 5,
+              "toProgress": 11,
+              "path": [
+                6,
+                7,
+                8,
+                9,
+                10,
+                11
+              ],
+              "segments": [
+                {
+                  "kind": "WALK",
+                  "fromProgress": 5,
+                  "toProgress": 11,
+                  "path": [
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": false,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "blue-2": {
+              "pieceId": "blue-2",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "blue-3": {
+              "pieceId": "blue-3",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "blue-4": {
+              "pieceId": "blue-4",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            }
+          }
+        }
+      ],
+      "rescuePieceIds": [],
+      "rolledTotal": 8,
+      "extraRolls": 0
+    },
+    "after": {
+      "protocolVersion": 4,
+      "roomId": "740467",
+      "roomStatus": "PLAYING",
+      "roomMode": "PRIVATE",
+      "ownerId": "RED",
+      "players": [
+        {
+          "id": "RED",
+          "nickname": "RED",
+          "color": "RED",
+          "preferredColor": "RED",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "YELLOW",
+          "nickname": "YELLOW",
+          "color": "YELLOW",
+          "preferredColor": "YELLOW",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "BLUE",
+          "nickname": "BLUE",
+          "color": "BLUE",
+          "preferredColor": "BLUE",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "GREEN",
+          "nickname": "GREEN",
+          "color": "GREEN",
+          "preferredColor": "GREEN",
+          "ready": true,
+          "connected": true
+        }
+      ],
+      "currentPlayerId": "BLUE",
+      "phase": "WAIT_SELECT_DIE",
+      "dice": null,
+      "diceChoices": [
+        2,
+        6
+      ],
+      "selectedDieIndex": null,
+      "rollId": 1,
+      "pieces": [
+        {
+          "id": "red-1",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-2",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-3",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-4",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-1",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "MAIN_PATH",
+          "progress": 18,
+          "detour": false,
+          "locked": true
+        },
+        {
+          "id": "yellow-2",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-3",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-4",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-1",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "MAIN_PATH",
+          "progress": 5
+        },
+        {
+          "id": "blue-2",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-3",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-4",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-1",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-2",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-3",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-4",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        }
+      ],
+      "movablePieceIds": [],
+      "rankings": [],
+      "turnNumber": 1,
+      "movePreviews": {},
+      "skills": [
+        {
+          "playerId": "RED",
+          "skillId": "uk-sun",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "RED",
+          "skillId": "uk-apple",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 0
+        },
+        {
+          "playerId": "RED",
+          "skillId": "uk-industry",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "YELLOW",
+          "skillId": "fr-tradition",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 1
+        },
+        {
+          "playerId": "YELLOW",
+          "skillId": "fr-paris",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-roar",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 8
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-scale",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-grit",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "GREEN",
+          "skillId": "us-war",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "GREEN",
+          "skillId": "us-bomb",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        }
+      ],
+      "actionOptions": [
+        {
+          "id": "die-0",
+          "dieIndex": 0,
+          "dice": 2,
+          "kind": "STANDARD",
+          "label": "2",
+          "mandatory": false,
+          "usesStoredCharge": false,
+          "extraTurn": false,
+          "movablePieceIds": [
+            "blue-1"
+          ],
+          "movePreviews": {
+            "blue-1": {
+              "pieceId": "blue-1",
+              "fromProgress": 5,
+              "toProgress": 7,
+              "path": [
+                6,
+                7
+              ],
+              "segments": [
+                {
+                  "kind": "WALK",
+                  "fromProgress": 5,
+                  "toProgress": 7,
+                  "path": [
+                    6,
+                    7
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": false,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": false,
+              "effectiveDice": 2
+            }
+          }
+        },
+        {
+          "id": "die-1",
+          "dieIndex": 1,
+          "dice": 6,
+          "kind": "STANDARD",
+          "label": "6",
+          "mandatory": false,
+          "usesStoredCharge": false,
+          "extraTurn": true,
+          "movablePieceIds": [
+            "blue-1",
+            "blue-2",
+            "blue-3",
+            "blue-4"
+          ],
+          "movePreviews": {
+            "blue-1": {
+              "pieceId": "blue-1",
+              "fromProgress": 5,
+              "toProgress": 11,
+              "path": [
+                6,
+                7,
+                8,
+                9,
+                10,
+                11
+              ],
+              "segments": [
+                {
+                  "kind": "WALK",
+                  "fromProgress": 5,
+                  "toProgress": 11,
+                  "path": [
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": false,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "blue-2": {
+              "pieceId": "blue-2",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "blue-3": {
+              "pieceId": "blue-3",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "blue-4": {
+              "pieceId": "blue-4",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            }
+          }
+        }
+      ],
+      "rescuePieceIds": [],
+      "rolledTotal": 8,
+      "extraRolls": 0
+    }
+  },
+  {
+    "name": "locked-stack-GREEN",
+    "playerId": "GREEN",
+    "snapshot": {
+      "protocolVersion": 4,
+      "roomId": "641364",
+      "roomStatus": "PLAYING",
+      "roomMode": "PRIVATE",
+      "ownerId": "RED",
+      "players": [
+        {
+          "id": "RED",
+          "nickname": "RED",
+          "color": "RED",
+          "preferredColor": "RED",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "YELLOW",
+          "nickname": "YELLOW",
+          "color": "YELLOW",
+          "preferredColor": "YELLOW",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "BLUE",
+          "nickname": "BLUE",
+          "color": "BLUE",
+          "preferredColor": "BLUE",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "GREEN",
+          "nickname": "GREEN",
+          "color": "GREEN",
+          "preferredColor": "GREEN",
+          "ready": true,
+          "connected": true
+        }
+      ],
+      "currentPlayerId": "GREEN",
+      "phase": "WAIT_SELECT_DIE",
+      "dice": null,
+      "diceChoices": [
+        2,
+        6
+      ],
+      "selectedDieIndex": null,
+      "rollId": 1,
+      "pieces": [
+        {
+          "id": "red-1",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-2",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-3",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-4",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-1",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "MAIN_PATH",
+          "progress": 44,
+          "detour": false,
+          "locked": true
+        },
+        {
+          "id": "yellow-2",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-3",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-4",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-1",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-2",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-3",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-4",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-1",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "MAIN_PATH",
+          "progress": 5
+        },
+        {
+          "id": "green-2",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-3",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-4",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        }
+      ],
+      "movablePieceIds": [],
+      "rankings": [],
+      "turnNumber": 1,
+      "movePreviews": {},
+      "skills": [
+        {
+          "playerId": "RED",
+          "skillId": "uk-sun",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "RED",
+          "skillId": "uk-apple",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 0
+        },
+        {
+          "playerId": "RED",
+          "skillId": "uk-industry",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "YELLOW",
+          "skillId": "fr-tradition",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 1
+        },
+        {
+          "playerId": "YELLOW",
+          "skillId": "fr-paris",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-roar",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 8
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-scale",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-grit",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "GREEN",
+          "skillId": "us-war",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "GREEN",
+          "skillId": "us-bomb",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": true,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        }
+      ],
+      "actionOptions": [
+        {
+          "id": "die-0",
+          "dieIndex": 0,
+          "dice": 2,
+          "kind": "STANDARD",
+          "label": "2",
+          "mandatory": false,
+          "usesStoredCharge": false,
+          "extraTurn": false,
+          "movablePieceIds": [
+            "green-1"
+          ],
+          "movePreviews": {
+            "green-1": {
+              "pieceId": "green-1",
+              "fromProgress": 5,
+              "toProgress": 7,
+              "path": [
+                6,
+                7
+              ],
+              "segments": [
+                {
+                  "kind": "WALK",
+                  "fromProgress": 5,
+                  "toProgress": 7,
+                  "path": [
+                    6,
+                    7
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": false,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": false,
+              "effectiveDice": 2
+            }
+          }
+        },
+        {
+          "id": "die-1",
+          "dieIndex": 1,
+          "dice": 6,
+          "kind": "STANDARD",
+          "label": "6",
+          "mandatory": false,
+          "usesStoredCharge": false,
+          "extraTurn": true,
+          "movablePieceIds": [
+            "green-1",
+            "green-2",
+            "green-3",
+            "green-4"
+          ],
+          "movePreviews": {
+            "green-1": {
+              "pieceId": "green-1",
+              "fromProgress": 5,
+              "toProgress": 11,
+              "path": [
+                6,
+                7,
+                8,
+                9,
+                10,
+                11
+              ],
+              "segments": [
+                {
+                  "kind": "WALK",
+                  "fromProgress": 5,
+                  "toProgress": 11,
+                  "path": [
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": false,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "green-2": {
+              "pieceId": "green-2",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "green-3": {
+              "pieceId": "green-3",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "green-4": {
+              "pieceId": "green-4",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            }
+          }
+        }
+      ],
+      "rescuePieceIds": [],
+      "rolledTotal": 8,
+      "extraRolls": 0
+    },
+    "after": {
+      "protocolVersion": 4,
+      "roomId": "641364",
+      "roomStatus": "PLAYING",
+      "roomMode": "PRIVATE",
+      "ownerId": "RED",
+      "players": [
+        {
+          "id": "RED",
+          "nickname": "RED",
+          "color": "RED",
+          "preferredColor": "RED",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "YELLOW",
+          "nickname": "YELLOW",
+          "color": "YELLOW",
+          "preferredColor": "YELLOW",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "BLUE",
+          "nickname": "BLUE",
+          "color": "BLUE",
+          "preferredColor": "BLUE",
+          "ready": true,
+          "connected": true
+        },
+        {
+          "id": "GREEN",
+          "nickname": "GREEN",
+          "color": "GREEN",
+          "preferredColor": "GREEN",
+          "ready": true,
+          "connected": true
+        }
+      ],
+      "currentPlayerId": "GREEN",
+      "phase": "WAIT_SELECT_DIE",
+      "dice": null,
+      "diceChoices": [
+        2,
+        6
+      ],
+      "selectedDieIndex": null,
+      "rollId": 1,
+      "pieces": [
+        {
+          "id": "red-1",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-2",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-3",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "red-4",
+          "playerId": "RED",
+          "color": "RED",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-1",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "MAIN_PATH",
+          "progress": 44,
+          "detour": false,
+          "locked": true
+        },
+        {
+          "id": "yellow-2",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-3",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "yellow-4",
+          "playerId": "YELLOW",
+          "color": "YELLOW",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-1",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-2",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-3",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "blue-4",
+          "playerId": "BLUE",
+          "color": "BLUE",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-1",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "MAIN_PATH",
+          "progress": 5
+        },
+        {
+          "id": "green-2",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-3",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        },
+        {
+          "id": "green-4",
+          "playerId": "GREEN",
+          "color": "GREEN",
+          "state": "AIRPORT",
+          "progress": -1
+        }
+      ],
+      "movablePieceIds": [],
+      "rankings": [],
+      "turnNumber": 1,
+      "movePreviews": {},
+      "skills": [
+        {
+          "playerId": "RED",
+          "skillId": "uk-sun",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "RED",
+          "skillId": "uk-apple",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 0
+        },
+        {
+          "playerId": "RED",
+          "skillId": "uk-industry",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "YELLOW",
+          "skillId": "fr-tradition",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 1
+        },
+        {
+          "playerId": "YELLOW",
+          "skillId": "fr-paris",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-roar",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false,
+          "progress": 8
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-scale",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "BLUE",
+          "skillId": "cn-grit",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "GREEN",
+          "skillId": "us-war",
+          "charges": -1,
+          "cooldownTurns": 0,
+          "available": false,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        },
+        {
+          "playerId": "GREEN",
+          "skillId": "us-bomb",
+          "charges": 1,
+          "cooldownTurns": 0,
+          "available": true,
+          "awakened": false,
+          "energy": 0,
+          "level": 0,
+          "forcedDelta": 0,
+          "storedCharge": false,
+          "usedThisTurn": false
+        }
+      ],
+      "actionOptions": [
+        {
+          "id": "die-0",
+          "dieIndex": 0,
+          "dice": 2,
+          "kind": "STANDARD",
+          "label": "2",
+          "mandatory": false,
+          "usesStoredCharge": false,
+          "extraTurn": false,
+          "movablePieceIds": [
+            "green-1"
+          ],
+          "movePreviews": {
+            "green-1": {
+              "pieceId": "green-1",
+              "fromProgress": 5,
+              "toProgress": 7,
+              "path": [
+                6,
+                7
+              ],
+              "segments": [
+                {
+                  "kind": "WALK",
+                  "fromProgress": 5,
+                  "toProgress": 7,
+                  "path": [
+                    6,
+                    7
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": false,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": false,
+              "effectiveDice": 2
+            }
+          }
+        },
+        {
+          "id": "die-1",
+          "dieIndex": 1,
+          "dice": 6,
+          "kind": "STANDARD",
+          "label": "6",
+          "mandatory": false,
+          "usesStoredCharge": false,
+          "extraTurn": true,
+          "movablePieceIds": [
+            "green-1",
+            "green-2",
+            "green-3",
+            "green-4"
+          ],
+          "movePreviews": {
+            "green-1": {
+              "pieceId": "green-1",
+              "fromProgress": 5,
+              "toProgress": 11,
+              "path": [
+                6,
+                7,
+                8,
+                9,
+                10,
+                11
+              ],
+              "segments": [
+                {
+                  "kind": "WALK",
+                  "fromProgress": 5,
+                  "toProgress": 11,
+                  "path": [
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": false,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "green-2": {
+              "pieceId": "green-2",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "green-3": {
+              "pieceId": "green-3",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            },
+            "green-4": {
+              "pieceId": "green-4",
+              "fromProgress": -1,
+              "toProgress": 0,
+              "path": [
+                0
+              ],
+              "segments": [
+                {
+                  "kind": "TAKEOFF",
+                  "fromProgress": -1,
+                  "toProgress": 0,
+                  "path": [
+                    0
+                  ]
+                }
+              ],
+              "captures": [],
+              "tookOff": true,
+              "jumped": false,
+              "usedFlightPath": false,
+              "killedPieceIds": [],
+              "reachedFinish": false,
+              "playerFinished": false,
+              "extraTurn": true,
+              "effectiveDice": 6
+            }
+          }
+        }
+      ],
       "rescuePieceIds": [],
       "rolledTotal": 8,
       "extraRolls": 0

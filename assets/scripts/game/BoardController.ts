@@ -101,6 +101,9 @@ export class BoardController extends Component {
       const graphics = actor.hit.getComponent(Graphics)!;
       graphics.clear();
       if (!this.movable.has(id)) continue;
+      // Locked/enemy tokens can share this cell. The legal action target must
+      // receive the pointer first; skill selection supplies its own target IDs.
+      actor.hit.setSiblingIndex(-1);
       const color = this.pieces.get(id)?.color ?? 'RED';
       graphics.strokeColor = new Color(BOARD_COLORS[color]); graphics.lineWidth = 2.4;
       graphics.circle(0, 0, 23); graphics.stroke();
@@ -175,7 +178,7 @@ export class BoardController extends Component {
       captured.add(id); captureTasks.push(this.capture(id, epoch, result.captureOutcomes?.find((outcome) => outcome.pieceId === id)));
     };
     for (const segment of result.segments) {
-      if (segment.kind === 'FLIGHT') for (const hit of result.captures) if (hit.atProgress === segment.fromProgress) capture(hit.pieceId);
+      if (segment.kind === 'FLIGHT' || segment.kind === 'JUMP') for (const hit of result.captures) if (hit.atProgress === segment.fromProgress) capture(hit.pieceId);
       const steps = segment.kind === 'WALK' ? segment.path : [segment.toProgress];
       for (const progress of steps) {
         const destination = this.toView(BoardLayout.mainPathPosition(piece.color, progress, !!result.fromDetour && progress <= 0));

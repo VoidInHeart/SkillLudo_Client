@@ -7,6 +7,7 @@
     "French countdown and selection pointer input; lock badge stays at the capture cell",
     "American 52 rotated cell targets, five-cell blast, Chinese capture returns to takeoff",
     "Paris unlock animation and pending rescue count",
+    "All three opponents can click their own plane atop locked France, regardless of hitbox creation order",
     "AI optional skills disabled; portrait modal reflows"
   ],
   "errors": []

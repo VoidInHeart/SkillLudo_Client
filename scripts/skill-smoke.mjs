@@ -119,6 +119,20 @@ try {
   assert.equal(await page.evaluate(() => testGame.snapshot.rescuePieceIds.length), 2);
   checks.push('Paris unlock animation and pending rescue count');
 
+  for (const color of ['RED', 'BLUE', 'GREEN']) {
+    await load(`locked-stack-${color}`);
+    await page.evaluate(() => testGame.onClickDie(0));
+    // Force the locked hitbox above its attacker, then refresh legal targets:
+    // selection must work independently of creation order and board rotation.
+    await page.evaluate(() => {
+      testGame.boardController.actors.get('yellow-1').hit.setSiblingIndex(-1);
+      testGame.refreshMovable();
+    });
+    await click(`${color.toLowerCase()}-1-hit`, true);
+    await expectCommand('COMMIT_MOVE', { optionId: 'die-0', pieceId: `${color.toLowerCase()}-1` });
+  }
+  checks.push('All three opponents can click their own plane atop locked France, regardless of hitbox creation order');
+
   await load('china');
   await page.evaluate(() => { const s = structuredClone(testGame.snapshot); s.players.find((p) => p.id === 'BLUE').aiControlled = true; testGame.applySnapshot(s); });
   await click('SKILLS'); await click('Skill-cn-grit');
