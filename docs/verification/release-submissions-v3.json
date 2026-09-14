@@ -1,0 +1,46 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-09-14",
+  "url": "http://81.70.145.148",
+  "clientRevision": "d1be5984990a4d2e31aa4d9fe526c69aec584fe4",
+  "serverRevision": "9982a3d0111063fdbf9576f0de99a9568cc2175f",
+  "release": "d1be5984990a-1789291419886",
+  "sourceDirty": false,
+  "commits": {
+    "stage1Client": "114bad9",
+    "stage1Server": "18ff4d2",
+    "stage2Client": "d1be598",
+    "stage2Server": "66d30d6",
+    "runtimeDiagnostics": "9982a3d"
+  },
+  "ci": {
+    "client": { "id": 34749407422, "conclusion": "success" },
+    "server": { "id": 34749564025, "conclusion": "success" }
+  },
+  "checks": {
+    "clientUnitTests": 22,
+    "serverUnitTests": 88,
+    "typescriptAndMirroredProtocol": "passed",
+    "lockedFrenchStackPointerRegression": "passed",
+    "submissionDesktopAndMobilePointerKeyboardRotation": "passed",
+    "settingsAndChatToastRegression": "passed",
+    "publicSubmissionUIWithInterceptedCommands": "passed",
+    "publicTwoPlayerRoomDiceAndAtomicMove": "passed",
+    "mysqlSubmissionIntegration": "passed locally, in CI, and in production pod with mocked SMTP",
+    "smtpTls465Authentication": "passed in production pod; no email sent",
+    "readyz": "ok",
+    "pods": "mysql, server, web each 1/1 with zero restarts"
+  },
+  "wechat": {
+    "build": "passed",
+    "orientation": "landscape",
+    "files": 30,
+    "bytes": 3595479,
+    "deviceOrUploadVerified": false
+  },
+  "limitations": [
+    "No external test email or recipient inbox confirmation",
+    "SMTP acceptance is not a guarantee of inbox delivery",
+    "No new capacity load test; existing k3s and port 80 retained"
+  ]
+}

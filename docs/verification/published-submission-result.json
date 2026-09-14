@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "scope": "Cocos UI with intercepted submission commands; no external email",
+  "checks": [
+    "desktop: real pointer/keyboard country designer, dropdown, multi-skill navigation, preview, deduplicated retries, saved draft, settings feedback and UTF-8 size limit",
+    "phone: real pointer/keyboard country designer, dropdown, multi-skill navigation, preview, deduplicated retries, saved draft, settings feedback and UTF-8 size limit, rotation and DPR3"
+  ],
+  "errors": []
+}
