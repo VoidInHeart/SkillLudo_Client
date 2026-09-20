@@ -1,0 +1,7 @@
+{
+  "status": "reproduced",
+  "url": "http://127.0.0.1:7459",
+  "error": "AssertionError [ERR_ASSERTION]: android/LoginUsername: keyboard resize must not blur/refocus the input: {\"sameInput\":true,\"events\":[{\"type\":\"focusout\",\"id\":\"EditBoxId_1\"},{\"type\":\"focusin\",\"id\":\"EditBoxId_1\"}],\"canvas\":{\"x\":0,\"y\":0,\"width\":412,\"height\":550,\"top\":0,\"right\":412,\"bottom\":550,\"left\":0},\"input\":{\"x\":102.13888549804688,\"y\":246.38888549804688,\"width\":211.72222900390625,\"height\":25.17779541015625,\"top\":246.38888549804688,\"right\":313.8611145019531,\"bottom\":271.5666809082031,\"left\":102.13888549804688}}\n\n1 !== 0\n",
+  "checks": [],
+  "errors": []
+}

@@ -15,6 +15,7 @@
     "verify:skills": "node scripts/skill-smoke.mjs",
     "verify:lifecycle": "node scripts/lifecycle-smoke.mjs",
     "verify:viewport": "node scripts/viewport-smoke.mjs",
+    "verify:keyboard": "node scripts/keyboard-smoke.mjs",
     "verify:settings": "node scripts/settings-smoke.mjs",
     "verify:submissions": "node scripts/submission-smoke.mjs",
     "verify:wechat": "node scripts/verify-wechat-build.mjs",

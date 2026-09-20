@@ -2,10 +2,10 @@ import { Application } from '<%= applicationJS %>';
 
 const application = new Application();
 System.import('cc').then((engine) => {
-    // Creator's desktop template defaults to a fixed subframe. Configure the
-    // screen before its initialization so resize updates the render buffer.
+    // Measure GameDiv instead of the keyboard-reduced browser window.
+    // ResponsiveCanvas synchronizes CSS frame changes with the render buffer.
     engine.game.onPostBaseInitDelegate.add(() => {
-        engine.settings.overrideSettings('screen', 'exactFitScreen', true);
+        engine.settings.overrideSettings('screen', 'exactFitScreen', false);
     });
     return application.init(engine);
 }).then(() => application.start()).catch(console.error);

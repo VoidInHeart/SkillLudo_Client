@@ -9,7 +9,8 @@
     <link rel="icon" href="favicon.ico">
   </head>
   <body>
-    <div id="GameDiv" cc_exact_fit_screen="true">
+    <!-- Read the CSS frame size so soft-keyboard height changes cannot stretch the render buffer. -->
+    <div id="GameDiv" cc_exact_fit_screen="false">
       <div id="Cocos3dGameContainer">
         <canvas id="GameCanvas" tabindex="0" aria-label="飞行棋游戏"></canvas>
       </div>

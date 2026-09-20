@@ -1,4 +1,4 @@
-import { _decorator, BlockInputEvents, Button, Canvas, Color, Component, EditBox, Graphics, js, Label, Layers, Node, UITransform, Vec3, view } from 'cc';
+import { _decorator, BlockInputEvents, Button, Canvas, Color, Component, EditBox, Graphics, js, Label, Layers, Node, sys, UITransform, Vec3, view } from 'cc';
 import type { ActionOption, ChatEntry, GameSnapshot, PlayerColor, PlayerPublicState } from '../protocol/GameProtocol';
 import type { ActiveGameSummary, BoardCalibrationOpen } from '../protocol/GameProtocol';
 
@@ -123,7 +123,9 @@ export class GameUI extends Component {
   private resizeLobby(): void {
     const size = view.getVisibleSize();
     if (!this.runtimeRoot || (Math.abs(size.width - this.lobbySize.width) < 0.1 && Math.abs(size.height - this.lobbySize.height) < 0.1)) return;
-    const focused = this.authFormRoot?.getComponentsInChildren(EditBox).find((input) => input.isFocused())?.node.name;
+    // Detaching an active EditBox ends native editing. Resizing then restoring
+    // focus can repeatedly close/open Android's keyboard, causing a resize loop.
+    if (sys.isBrowser && sys.isMobile && this.runtimeRoot.getComponentsInChildren(EditBox).some((input) => input.isFocused())) return;
     const authNotice = this.authNoticeLabel?.string ?? '';
     const connection = this.homeConnectionLabel?.string ?? '';
     this.closeAccountDrawer();
@@ -142,9 +144,6 @@ export class GameUI extends Component {
     this.runtimeRoot.getComponent(UITransform)!.setContentSize(size);
     this.buildLobbyUi(size);
     this.renderAuthForm(this.authMode);
-    for (const input of this.authFormRoot?.getComponentsInChildren(EditBox) ?? []) {
-      if (input.node.name === focused) this.scheduleOnce(() => { if (input.isValid && input.node.activeInHierarchy) input.focus(); });
-    }
     this.setText(this.authNoticeLabel, authNotice);
     this.setText(this.homeConnectionLabel, connection);
     if (this.currentScreen === 'ROOM' && this.lastSnapshot) this.renderRoom(this.lastSnapshot, this.localPlayerId);
@@ -795,6 +794,7 @@ export class GameUI extends Component {
     };
     this.scheduleOnce(alignDisplayLabels);
     input.node.on(EditBox.EventType.EDITING_DID_ENDED, alignDisplayLabels);
+    input.node.on(EditBox.EventType.EDITING_DID_ENDED, this.scheduleResize, this);
     return input;
   }
 
