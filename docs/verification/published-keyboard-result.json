@@ -1,0 +1,27 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-09-20T03:16:33.697Z",
+  "url": "http://81.70.145.148",
+  "checks": [
+    "android/LoginUsername: layout viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "android/LoginPassword: layout viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "android: switching between fields keeps the same keyboard layout lock",
+    "android: rotation ends editing once, preserves text and fits the new viewport",
+    "android/RegisterNickname: layout viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "android/JoinRoomId: layout viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "android/SkillDescription: layout viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "android/FeedbackContent: layout viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "android/ChatInput: layout viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "ios/LoginUsername: visual viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "ios/LoginPassword: visual viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "ios: switching between fields keeps the same keyboard layout lock",
+    "ios: rotation ends editing once, preserves text and fits the new viewport",
+    "ios/RegisterNickname: visual viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "ios/JoinRoomId: visual viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "ios/SkillDescription: visual viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "ios/FeedbackContent: visual viewport/IME resize retains focus, typing and canvas; blur restores viewport",
+    "ios/ChatInput: visual viewport/IME resize retains focus, typing and canvas; blur restores viewport"
+  ],
+  "errors": [],
+  "scope": "Android/iOS WeChat UA, layout/visual viewport keyboard resize and CDP Chinese IME composition in Chromium; not physical devices or WebKit"
+}

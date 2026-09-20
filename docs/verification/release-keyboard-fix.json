@@ -1,0 +1,45 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-09-20",
+  "url": "http://81.70.145.148",
+  "clientRevision": "55734cbdcf23552768d5967497ba7b97bb4b49ab",
+  "serverRevision": "9982a3d0111063fdbf9576f0de99a9568cc2175f",
+  "release": "55734cbdcf23-1789874107480",
+  "sourceDirty": false,
+  "v1.0Tags": {
+    "client": "2750fa0be39ec6f01a85c9036c65a1b41532b0fd",
+    "server": "e9c1d081067752f23aaf61d4811cfefaa2940742",
+    "remoteVerified": true,
+    "unchangedAfterFix": true
+  },
+  "commits": { "stage1Client": "dd68c93", "stage1Server": "63f60ef", "stage2Fix": "55734cb" },
+  "ci": { "clientRunId": 35486072124, "conclusion": "success" },
+  "checks": {
+    "clientUnitTests": 22,
+    "typescriptSourceAndTests": "passed",
+    "baselineBlurRefocusLoop": "reproduced before fix",
+    "localMobileInputChecks": 18,
+    "publicAssetMobileInputChecks": 18,
+    "localViewportDprRotationPointerCases": 7,
+    "nativeTextAlignmentAndStableRenderBuffer": "passed",
+    "chineseImeComposition": "passed",
+    "publicTwoPlayerRoomDiceAndAtomicMove": "passed",
+    "browserErrors": [],
+    "webBuild": "passed",
+    "readyz": "ok",
+    "pods": "mysql, server and web: 1/1, zero restarts"
+  },
+  "wechat": {
+    "build": "passed",
+    "orientation": "landscape",
+    "files": 30,
+    "bytes": 3600560,
+    "deviceOrUploadVerified": false
+  },
+  "scope": [
+    "Keyboard tests use Chromium with Android/iOS WeChat UA and emulated layout/visual viewport changes; not physical devices or WebKit",
+    "Keyboard test sockets use isolated local backend fixtures; no production submission or email",
+    "Published two-player smoke uses real production WebSockets without replacement",
+    "Backend unchanged; no new backend regression, database integration or capacity tests in this stage"
+  ]
+}
